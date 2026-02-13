@@ -121,7 +121,7 @@ function serialise_gauss(g::GaussCode)::String
     "[" * join(g.crossings, ",") * "]"
 end
 
-function deserialise_gauss(s::String)::GaussCode
+function deserialise_gauss(s::AbstractString)::GaussCode
     # Parse "[1,-2,3,-1,2,-3]" back to Vector{Int}
     stripped = strip(s, ['[', ']'])
     isempty(stripped) && return GaussCode(Int[])

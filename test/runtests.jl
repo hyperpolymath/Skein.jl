@@ -212,21 +212,69 @@ using Random
         db = SkeinDB(":memory:")
 
         n = Skein.import_knotinfo!(db)
-        @test n >= 9  # at least 9 knots through 7_1
-        @test haskey(db, "3_1")
+        @test n == 36  # full Rolfsen table through 8 crossings
         @test haskey(db, "0_1")
+        @test haskey(db, "3_1")
         @test haskey(db, "7_1")
+        @test haskey(db, "7_7")
+        @test haskey(db, "8_1")
+        @test haskey(db, "8_18")
+        @test haskey(db, "8_19")  # first non-alternating
+        @test haskey(db, "8_21")
 
         # Verify metadata
         trefoil = fetch_knot(db, "3_1")
         @test trefoil.crossing_number == 3
         @test trefoil.metadata["type"] == "torus"
 
+        fig8 = fetch_knot(db, "4_1")
+        @test fig8.crossing_number == 4
+        @test fig8.metadata["alias"] == "figure-eight"
+
+        # Non-alternating knots
+        k819 = fetch_knot(db, "8_19")
+        @test k819.crossing_number == 8
+        @test k819.metadata["alternating"] == "false"
+
+        # Crossing number distribution
+        for cn in [3, 4, 5, 6, 7, 8]
+            results = query(db, crossing_number = cn)
+            expected = cn == 3 ? 1 : cn == 4 ? 1 : cn == 5 ? 2 :
+                       cn == 6 ? 3 : cn == 7 ? 7 : 21
+            @test length(results) == expected
+        end
+
         # Idempotent — second import should add 0
         n2 = Skein.import_knotinfo!(db)
         @test n2 == 0
 
         close(db)
+    end
+
+    @testset "DT-to-Gauss conversion" begin
+        # Trefoil: DT [4, 6, 2] → valid 3-crossing Gauss code
+        g = dt_to_gauss([4, 6, 2])
+        @test crossing_number(g) == 3
+        @test length(g) == 6
+
+        # Each crossing appears exactly twice (once +, once -)
+        for i in 1:3
+            @test count(x -> abs(x) == i, g.crossings) == 2
+            @test count(x -> x == i, g.crossings) == 1
+            @test count(x -> x == -i, g.crossings) == 1
+        end
+
+        # Figure-eight: DT [4, 6, 8, 2]
+        g2 = dt_to_gauss([4, 6, 8, 2])
+        @test crossing_number(g2) == 4
+
+        # Unknot: empty DT
+        @test dt_to_gauss(Int[]) == GaussCode(Int[])
+
+        # Non-alternating: 8_19 has negative DT entries
+        g3 = dt_to_gauss([4, 8, -12, 2, -16, -14, 6, 10])
+        @test crossing_number(g3) == 8
+        @test length(g3) == 16
     end
 
     @testset "Statistics" begin
@@ -476,6 +524,176 @@ using Random
         results = find_isotopic(db, kinked_unknot)
         @test length(results) >= 1
         @test any(r -> r.name == "unknot", results)
+
+        close(db)
+    end
+
+    @testset "Laurent polynomial arithmetic" begin
+        a = LaurentPoly(1 => 2, -1 => 3)  # 2A + 3A⁻¹
+        b = LaurentPoly(1 => 1, 0 => 1)   # A + 1
+
+        # Addition
+        s = Skein.lpoly_add(a, b)
+        @test s[1] == 3   # 2A + A = 3A
+        @test s[0] == 1   # 1
+        @test s[-1] == 3  # 3A⁻¹
+
+        # Multiplication
+        m = Skein.lpoly_mul(LaurentPoly(0 => 1), a)
+        @test m == a  # 1 * a = a
+
+        # Power
+        p = Skein.lpoly_pow(LaurentPoly(1 => 1), 3)
+        @test p == LaurentPoly(3 => 1)  # A³
+
+        # Negate
+        n = Skein.lpoly_negate(a)
+        @test n[1] == -2
+        @test n[-1] == -3
+
+        # Zero power
+        @test Skein.lpoly_pow(a, 0) == LaurentPoly(0 => 1)
+
+        # Serialisation round-trip
+        @test deserialise_laurent(serialise_laurent(a)) == a
+        @test serialise_laurent(LaurentPoly()) == "0:0"
+    end
+
+    @testset "Bracket polynomial" begin
+        # Unknot: bracket = 1
+        unknot_bracket = bracket_polynomial(GaussCode(Int[]))
+        @test unknot_bracket == LaurentPoly(0 => 1)
+
+        # Single positive kink [1, -1]: bracket should be -A³
+        kink = GaussCode([1, -1])
+        b = bracket_polynomial(kink)
+        @test b[3] == -1  # -A³
+
+        # Trefoil: bracket is known
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        bt = bracket_polynomial(trefoil)
+        @test !isempty(bt)
+        @test bt isa LaurentPoly
+
+        # Figure-eight
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        bf = bracket_polynomial(fig8)
+        @test !isempty(bf)
+
+        # Bracket is deterministic
+        @test bracket_polynomial(trefoil) == bracket_polynomial(trefoil)
+
+        # Different knots should (usually) have different brackets
+        @test bt != bf
+    end
+
+    @testset "Jones polynomial" begin
+        # Unknot: Jones = 1
+        unknot_jones = jones_from_bracket(GaussCode(Int[]))
+        @test unknot_jones == LaurentPoly(0 => 1)
+
+        # Jones polynomial is deterministic
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        j1 = jones_from_bracket(trefoil)
+        j2 = jones_from_bracket(trefoil)
+        @test j1 == j2
+        @test !isempty(j1)
+
+        # Jones polynomial string
+        s = jones_polynomial_str(trefoil)
+        @test s isa String
+        @test length(s) > 0
+
+        # Round-trip through serialisation
+        @test deserialise_laurent(s) == j1
+
+        # Different knots → different Jones polynomials
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        @test jones_from_bracket(fig8) != j1
+    end
+
+    @testset "Reidemeister II simplification" begin
+        # A Gauss code with an R2 bigon: crossings 1 and 2 alternate
+        # Pattern: 1, 2, -1, -2 (no interleaved crossings, opposite signs)
+        r2_code = GaussCode([1, 2, -1, -2])
+        s = simplify_r2(r2_code)
+        @test crossing_number(s) == 0  # both crossings removed
+
+        # R2 pair embedded in a larger code
+        # Trefoil [1,-2,3,-1,2,-3] has no R2 pairs
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        @test simplify_r2(trefoil) == trefoil
+
+        # Empty code
+        @test simplify_r2(GaussCode(Int[])) == GaussCode(Int[])
+
+        # Combined simplification (R1 + R2)
+        @test simplify(GaussCode(Int[])) == GaussCode(Int[])
+        @test simplify(GaussCode([1, -1])) == GaussCode(Int[])  # R1
+
+        # Simplify is idempotent
+        g = GaussCode([1, -2, 3, -1, 2, -3])
+        @test simplify(simplify(g)) == simplify(g)
+    end
+
+    @testset "is_isotopic with Jones" begin
+        # Two unknot representations should be isotopic
+        @test is_isotopic(GaussCode(Int[]), GaussCode([1, -1]))
+
+        # Trefoil with kink should be isotopic to trefoil
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        kinked = GaussCode([4, -4, 1, -2, 3, -1, 2, -3])
+        @test is_isotopic(trefoil, kinked)
+
+        # Trefoil and figure-eight should NOT be isotopic
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        @test !is_isotopic(trefoil, fig8)
+    end
+
+    @testset "import_csv!" begin
+        db = SkeinDB(":memory:")
+
+        # Create a temporary CSV file
+        tmpcsv = tempname() * ".csv"
+        open(tmpcsv, "w") do io
+            println(io, "name,gauss_code,family")
+            println(io, "csv_trefoil,\"[1,-2,3,-1,2,-3]\",torus")
+            println(io, "csv_fig8,\"[1,-2,3,-4,2,-1,4,-3]\",twist")
+            println(io, "csv_unknot,\"[]\",trivial")
+        end
+
+        n = import_csv!(db, tmpcsv)
+        @test n == 3
+        @test haskey(db, "csv_trefoil")
+        @test haskey(db, "csv_fig8")
+        @test haskey(db, "csv_unknot")
+
+        # Check invariants were computed
+        t = fetch_knot(db, "csv_trefoil")
+        @test t.crossing_number == 3
+        @test t.metadata["family"] == "torus"
+
+        u = fetch_knot(db, "csv_unknot")
+        @test u.crossing_number == 0
+
+        rm(tmpcsv)
+        close(db)
+    end
+
+    @testset "import_csv! with data file" begin
+        db = SkeinDB(":memory:")
+
+        # Use the bundled 9-crossing knot data
+        csvpath = joinpath(@__DIR__, "..", "data", "knots_9.csv")
+        if isfile(csvpath)
+            n = import_csv!(db, csvpath)
+            @test n >= 7
+
+            @test haskey(db, "9_1")
+            k91 = fetch_knot(db, "9_1")
+            @test k91.crossing_number == 9
+            @test k91.metadata["type"] == "torus"
+        end
 
         close(db)
     end

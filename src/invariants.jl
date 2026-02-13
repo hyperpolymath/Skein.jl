@@ -190,18 +190,122 @@ function simplify_r1(g::GaussCode)::GaussCode
 end
 
 """
+    simplify_r2(g::GaussCode) -> GaussCode
+
+Remove Reidemeister II moves (bigons) from a Gauss code.
+Two crossings i and j form an R2 pair if their four appearances
+alternate in the cyclic code (i,j,i,j pattern), both crossings
+change sign between appearances, and no other crossing is
+interleaved between them (linking condition).
+"""
+function simplify_r2(g::GaussCode)::GaussCode
+    isempty(g.crossings) && return g
+
+    changed = true
+    current = copy(g.crossings)
+
+    while changed
+        changed = false
+        labels = unique(abs.(current))
+        n_labels = length(labels)
+
+        for i in 1:n_labels, j in (i+1):n_labels
+            ci, cj = labels[i], labels[j]
+
+            pos_ci = findall(x -> abs(x) == ci, current)
+            pos_cj = findall(x -> abs(x) == cj, current)
+            length(pos_ci) == 2 || continue
+            length(pos_cj) == 2 || continue
+
+            if _is_r2_pair(current, ci, cj, pos_ci, pos_cj)
+                filter!(x -> abs(x) != ci && abs(x) != cj, current)
+                changed = true
+                break
+            end
+        end
+    end
+
+    GaussCode(current)
+end
+
+function _is_r2_pair(code::Vector{Int}, ci::Int, cj::Int,
+                     pos_ci::Vector{Int}, pos_cj::Vector{Int})::Bool
+    # Sort all 4 positions
+    all_pos = sort([pos_ci..., pos_cj...])
+
+    # Check alternation: crossings must alternate (i,j,i,j or j,i,j,i)
+    ids = [abs(code[p]) for p in all_pos]
+    (ids[1] == ids[3] && ids[2] == ids[4] && ids[1] != ids[2]) || return false
+
+    # Check opposite signs for each crossing
+    sign(code[pos_ci[1]]) != sign(code[pos_ci[2]]) || return false
+    sign(code[pos_cj[1]]) != sign(code[pos_cj[2]]) || return false
+
+    # Linking condition: no other crossing has appearances in opposite arcs
+    L = length(code)
+    arc_contents = [Set{Int}() for _ in 1:4]
+
+    for arc_idx in 1:4
+        start = all_pos[arc_idx]
+        stop = all_pos[mod1(arc_idx + 1, 4)]
+        pos = start
+        while true
+            pos = mod1(pos + 1, L)
+            pos == stop && break
+            c = abs(code[pos])
+            (c == ci || c == cj) && continue
+            push!(arc_contents[arc_idx], c)
+        end
+    end
+
+    # Opposite arcs (1&3, 2&4) must not share any crossing
+    isempty(intersect(arc_contents[1], arc_contents[3])) &&
+    isempty(intersect(arc_contents[2], arc_contents[4]))
+end
+
+"""
+    simplify(g::GaussCode) -> GaussCode
+
+Apply Reidemeister I and II simplifications exhaustively.
+Returns the simplified Gauss code.
+"""
+function simplify(g::GaussCode)::GaussCode
+    prev = g
+    while true
+        s = simplify_r1(prev)
+        s = simplify_r2(s)
+        s == prev && return s
+        prev = s
+    end
+end
+
+"""
     is_isotopic(g1::GaussCode, g2::GaussCode) -> Bool
 
 Check whether two Gauss codes are topologically equivalent by
-simplifying both with Reidemeister I moves and then checking
+simplifying both with Reidemeister I and II moves, then checking
 diagram equivalence (cyclic rotation + relabelling).
 
-This is a heuristic — it catches many common equivalences but
-cannot detect all isotopies (full Reidemeister II and III would
-require more sophisticated algorithms).
+This catches many common equivalences. Full topological equivalence
+detection (Reidemeister III) would require more sophisticated
+algorithms or Jones polynomial comparison.
 """
 function is_isotopic(g1::GaussCode, g2::GaussCode)::Bool
-    s1 = simplify_r1(g1)
-    s2 = simplify_r1(g2)
-    is_equivalent(s1, s2)
+    s1 = simplify(g1)
+    s2 = simplify(g2)
+
+    # Fast path: same canonical form after simplification
+    is_equivalent(s1, s2) && return true
+
+    # Stronger check: compare Jones polynomials if crossing numbers match
+    if crossing_number(s1) == crossing_number(s2) && crossing_number(s1) <= 15
+        j1 = jones_from_bracket(s1)
+        j2 = jones_from_bracket(s2)
+        # Different Jones polys → definitely not isotopic
+        j1 != j2 && return false
+        # Same Jones poly → likely isotopic (not proven in general)
+        return true
+    end
+
+    false
 end

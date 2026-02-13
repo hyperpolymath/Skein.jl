@@ -45,7 +45,7 @@ export GaussCode, KnotRecord, SkeinDB
 # Database operations
 export store!, query, fetch_knot, list_knots
 export update_metadata!, bulk_import!
-export import_csv!, export_csv, export_json
+export import_csv!, export_csv, export_json, dt_to_gauss
 
 # Database lifecycle
 export close, isopen
@@ -54,13 +54,19 @@ export close, isopen
 export crossing_number, writhe, gauss_hash
 
 # Equivalence checking
-export is_equivalent, is_isotopic, is_amphichiral, mirror, simplify_r1, canonical_gauss
+export is_equivalent, is_isotopic, is_amphichiral, mirror, simplify_r1, simplify_r2, simplify
+export canonical_gauss
 export find_equivalents, find_isotopic
+
+# Polynomial invariants
+export LaurentPoly, bracket_polynomial, jones_from_bracket, jones_polynomial_str
+export serialise_laurent, deserialise_laurent
 
 # Composable query predicates
 export QueryPredicate, crossing, writhe_eq, meta_eq, name_like
 
 include("types.jl")
+include("polynomials.jl")
 include("invariants.jl")
 include("storage.jl")
 include("query.jl")

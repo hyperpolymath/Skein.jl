@@ -8,7 +8,7 @@ computes invariants on insert, and provides querying by those invariants.
 ## Build & Test
 
 ```bash
-# Run tests (493+ tests, ~12s)
+# Run tests (567+ tests, ~15s)
 julia --project=. -e 'using Pkg; Pkg.test()'
 
 # Run benchmarks
@@ -21,10 +21,11 @@ julia --project=. -e 'using Pkg; Pkg.resolve()'
 ## Architecture
 
 - **src/types.jl** — Core types: `GaussCode`, `KnotRecord`
-- **src/invariants.jl** — Standalone invariant computation + equivalence checking
+- **src/polynomials.jl** — Laurent polynomial arithmetic, Kauffman bracket, Jones polynomial
+- **src/invariants.jl** — Standalone invariant computation + equivalence checking (R1, R2)
 - **src/storage.jl** — SQLite backend, schema v2, CRUD operations
 - **src/query.jl** — Keyword queries + composable predicates (`&`, `|`)
-- **src/import_export.jl** — CSV/JSON export, KnotInfo import, bulk import
+- **src/import_export.jl** — CSV/JSON export, KnotInfo import (36 knots through 8 crossings), DT-to-Gauss conversion, bulk import
 - **ext/KnotTheoryExt.jl** — Package extension for KnotTheory.jl integration
 
 ## Key Patterns
