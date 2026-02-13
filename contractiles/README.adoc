@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+= Contractiles
+
+Operational, validation, trust, recovery, and intent framework for Skein.jl.
+
+== Structure
+
+[cols="1,3"]
+|===
+| Directory | Purpose
+
+| `k9/`
+| Kubernetes orchestration framework
+
+| `dust/`
+| Rollback and recovery semantics
+
+| `lust/`
+| Future intent and roadmap
+
+| `must/`
+| Required invariants and validations
+
+| `trust/`
+| Cryptographic verification
+|===
+
+== Overview
+
+- **Mustfile** contains required invariants (tests must pass, SPDX headers present)
+- **Trustfile** contains cryptographic verification requirements
+- **Dustfile** contains rollback/recovery semantics
+- **Lustfile** mirrors desired evolution roadmap
+- **K9** handles deployment orchestration

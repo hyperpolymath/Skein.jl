@@ -3,6 +3,7 @@
 
 using Test
 using Skein
+using Random
 
 @testset "Skein.jl" begin
 
@@ -69,9 +70,28 @@ using Skein
         @test record.gauss_code == trefoil
         @test record.metadata["family"] == "torus"
         @test record.metadata["notation"] == "3_1"
+        @test record.jones_polynomial === nothing  # not computed standalone
 
         # Not found
         @test isnothing(fetch_knot(db, "nonexistent"))
+
+        close(db)
+    end
+
+    @testset "Jones polynomial column" begin
+        db = SkeinDB(":memory:")
+
+        # Store with explicit Jones polynomial
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]);
+               jones_polynomial = "-4:1,-3:1,-1:1")
+
+        record = fetch_knot(db, "trefoil")
+        @test record.jones_polynomial == "-4:1,-3:1,-1:1"
+
+        # Store without Jones polynomial
+        store!(db, "unknot", GaussCode(Int[]))
+        record2 = fetch_knot(db, "unknot")
+        @test record2.jones_polynomial === nothing
 
         close(db)
     end
@@ -107,6 +127,35 @@ using Skein
         # Name pattern
         results = query(db, name_like = "%eight%")
         @test length(results) == 1
+
+        close(db)
+    end
+
+    @testset "Composable query predicates" begin
+        db = SkeinDB(":memory:")
+
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]);
+               metadata = Dict("family" => "torus"))
+        store!(db, "figure-eight", GaussCode([1, -2, 3, -4, 2, -1, 4, -3]);
+               metadata = Dict("family" => "twist"))
+        store!(db, "unknot", GaussCode(Int[]))
+
+        # Single predicate
+        results = query(db, crossing(3))
+        @test length(results) == 1
+        @test results[1].name == "trefoil"
+
+        # OR predicate
+        results = query(db, crossing(3) | crossing(4))
+        @test length(results) == 2
+
+        # AND predicate
+        results = query(db, crossing(3) & meta_eq("family", "torus"))
+        @test length(results) == 1
+
+        # Complex composition
+        results = query(db, (crossing(0) | crossing(3)) & name_like(".*"))
+        @test length(results) == 2
 
         close(db)
     end
@@ -159,6 +208,27 @@ using Skein
         close(db)
     end
 
+    @testset "KnotInfo import" begin
+        db = SkeinDB(":memory:")
+
+        n = Skein.import_knotinfo!(db)
+        @test n >= 9  # at least 9 knots through 7_1
+        @test haskey(db, "3_1")
+        @test haskey(db, "0_1")
+        @test haskey(db, "7_1")
+
+        # Verify metadata
+        trefoil = fetch_knot(db, "3_1")
+        @test trefoil.crossing_number == 3
+        @test trefoil.metadata["type"] == "torus"
+
+        # Idempotent — second import should add 0
+        n2 = Skein.import_knotinfo!(db)
+        @test n2 == 0
+
+        close(db)
+    end
+
     @testset "Statistics" begin
         db = SkeinDB(":memory:")
         store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
@@ -188,6 +258,241 @@ using Skein
         @test occursin("crossing_number", content)
 
         rm(tmpfile)
+        close(db)
+    end
+
+    @testset "Export JSON" begin
+        db = SkeinDB(":memory:")
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]);
+               metadata = Dict("family" => "torus"))
+
+        tmpfile = tempname() * ".json"
+        n = Skein.export_json(db, tmpfile)
+        @test n == 1
+
+        content = read(tmpfile, String)
+        @test occursin("trefoil", content)
+        @test occursin("crossing_number", content)
+        @test occursin("torus", content)
+
+        rm(tmpfile)
+        close(db)
+    end
+
+    @testset "Property-based: invariant consistency" begin
+        # Generate random valid Gauss codes and verify invariant properties
+
+        # Helper: generate a valid Gauss code with n crossings
+        function random_gauss(n::Int)
+            n == 0 && return GaussCode(Int[])
+            # Each crossing i appears twice: once as +i, once as -i
+            entries = Int[]
+            for i in 1:n
+                push!(entries, i)
+                push!(entries, -i)
+            end
+            # Shuffle to create a random (possibly non-realizable) code
+            GaussCode(entries[randperm(2n)])
+        end
+
+        Random.seed!(42)
+
+        for _ in 1:50
+            n = rand(0:8)
+            g = random_gauss(n)
+
+            # Crossing number = number of distinct crossings
+            @test crossing_number(g) == n
+
+            # Writhe is deterministic
+            @test writhe(g) == writhe(g)
+
+            # Hash is deterministic and content-addressed
+            @test gauss_hash(g) == gauss_hash(g)
+            @test gauss_hash(g) == gauss_hash(GaussCode(copy(g.crossings)))
+
+            # Normalisation is idempotent
+            g_norm = Skein.normalise_gauss(g)
+            g_norm2 = Skein.normalise_gauss(g_norm)
+            @test g_norm == g_norm2
+
+            # Normalised code uses labels 1..n
+            if n > 0
+                labels = unique(abs.(g_norm.crossings))
+                @test sort(labels) == 1:n
+            end
+        end
+    end
+
+    @testset "Property-based: store/fetch round-trip" begin
+        db = SkeinDB(":memory:")
+
+        Random.seed!(123)
+
+        for i in 1:20
+            n = rand(0:6)
+            crossings = Int[]
+            for j in 1:n
+                push!(crossings, j)
+                push!(crossings, -j)
+            end
+            gc = n == 0 ? GaussCode(Int[]) : GaussCode(crossings[randperm(2n)])
+
+            name = "random_knot_$i"
+            store!(db, name, gc)
+
+            record = fetch_knot(db, name)
+            @test !isnothing(record)
+            @test record.gauss_code == gc
+            @test record.crossing_number == crossing_number(gc)
+            @test record.writhe == writhe(gc)
+            @test record.gauss_hash == gauss_hash(gc)
+        end
+
+        close(db)
+    end
+
+    @testset "Equivalence: canonical_gauss" begin
+        # Cyclic rotation of trefoil should have same canonical form
+        g1 = GaussCode([1, -2, 3, -1, 2, -3])
+        g2 = GaussCode([-2, 3, -1, 2, -3, 1])  # rotated by 1
+        g3 = GaussCode([3, -1, 2, -3, 1, -2])  # rotated by 2
+
+        c1 = canonical_gauss(g1)
+        c2 = canonical_gauss(g2)
+        c3 = canonical_gauss(g3)
+        @test c1 == c2
+        @test c2 == c3
+
+        # Different knot should have different canonical form
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        @test canonical_gauss(fig8) != c1
+
+        # Unknot canonical form
+        @test canonical_gauss(GaussCode(Int[])) == GaussCode(Int[])
+    end
+
+    @testset "Equivalence: is_equivalent" begin
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+
+        # Same knot, rotated
+        rotated = GaussCode([-2, 3, -1, 2, -3, 1])
+        @test is_equivalent(trefoil, rotated)
+
+        # Same knot, relabelled (5→1, 10→2, 15→3)
+        relabelled = GaussCode([5, -10, 15, -5, 10, -15])
+        @test is_equivalent(trefoil, relabelled)
+
+        # Different knot
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        @test !is_equivalent(trefoil, fig8)
+
+        # Different crossing numbers → fast rejection
+        @test !is_equivalent(trefoil, GaussCode(Int[]))
+    end
+
+    @testset "Equivalence: mirror" begin
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        m = mirror(trefoil)
+        @test m.crossings == [-1, 2, -3, 1, -2, 3]
+        @test mirror(mirror(trefoil)) == trefoil
+
+        # Unknot is its own mirror
+        @test mirror(GaussCode(Int[])) == GaussCode(Int[])
+    end
+
+    @testset "Equivalence: is_amphichiral" begin
+        # Unknot is amphichiral (trivially)
+        @test is_amphichiral(GaussCode(Int[]))
+
+        # Note: figure-eight (4_1) is topologically amphichiral but
+        # detecting this requires Reidemeister II/III moves beyond
+        # what our diagram-level check can do. Full amphichirality
+        # detection requires KnotTheory.jl or a more sophisticated algorithm.
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        @test is_amphichiral(fig8) isa Bool  # just verify it runs
+    end
+
+    @testset "Equivalence: simplify_r1" begin
+        # A kink: crossing i appears as adjacent +i, -i
+        kinked = GaussCode([1, -1, 2, -3, -2, 3])
+        simplified = simplify_r1(kinked)
+        @test crossing_number(simplified) == 2
+
+        # No kinks to remove
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        @test simplify_r1(trefoil) == trefoil
+
+        # Pure kink (reduces to unknot)
+        @test simplify_r1(GaussCode([1, -1])) == GaussCode(Int[])
+
+        # Multiple kinks
+        multi_kink = GaussCode([1, -1, 2, -2])
+        @test simplify_r1(multi_kink) == GaussCode(Int[])
+
+        # Wrap-around kink
+        wraparound = GaussCode([-1, 2, -3, -2, 3, 1])
+        s = simplify_r1(wraparound)
+        @test crossing_number(s) == 2
+    end
+
+    @testset "Equivalence: is_isotopic" begin
+        # Trefoil with an extra kink should be isotopic to trefoil
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        # Insert kink (crossing 4) adjacent
+        trefoil_kinked = GaussCode([4, -4, 1, -2, 3, -1, 2, -3])
+        @test is_isotopic(trefoil, trefoil_kinked)
+
+        # Two unknots are isotopic
+        @test is_isotopic(GaussCode(Int[]), GaussCode([1, -1]))
+    end
+
+    @testset "Equivalence: find_equivalents" begin
+        db = SkeinDB(":memory:")
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        store!(db, "trefoil", trefoil)
+        store!(db, "figure-eight", GaussCode([1, -2, 3, -4, 2, -1, 4, -3]))
+
+        # Rotated trefoil should find the stored one
+        rotated = GaussCode([-2, 3, -1, 2, -3, 1])
+        results = find_equivalents(db, rotated)
+        @test length(results) == 1
+        @test results[1].name == "trefoil"
+
+        # Figure-eight shouldn't match trefoil search
+        results2 = find_equivalents(db, trefoil)
+        @test length(results2) == 1
+
+        close(db)
+    end
+
+    @testset "Equivalence: find_isotopic" begin
+        db = SkeinDB(":memory:")
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+        store!(db, "unknot", GaussCode(Int[]))
+
+        # A kinked unknot should find the stored unknot
+        kinked_unknot = GaussCode([1, -1])
+        results = find_isotopic(db, kinked_unknot)
+        @test length(results) >= 1
+        @test any(r -> r.name == "unknot", results)
+
+        close(db)
+    end
+
+    @testset "Duplicates detection" begin
+        db = SkeinDB(":memory:")
+
+        # Store same Gauss code under two names
+        gc = GaussCode([1, -2, 3, -1, 2, -3])
+        store!(db, "trefoil_a", gc)
+        store!(db, "trefoil_b", gc)
+        store!(db, "figure_eight", GaussCode([1, -2, 3, -4, 2, -1, 4, -3]))
+
+        dups = Skein.duplicates(db)
+        @test length(dups) == 1
+        @test length(dups[1]) == 2
+
         close(db)
     end
 

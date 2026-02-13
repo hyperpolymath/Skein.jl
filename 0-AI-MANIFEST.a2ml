@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+@manifest {
+  version: "1.0.0",
+  repo: "hyperpolymath/Skein.jl",
+  updated: "2026-02-13"
+}
+
+@canonical-locations {
+  scm-files: ".machine_readable/",
+  ci-cd: ".github/workflows/",
+  bot-directives: ".bot_directives/",
+  source: "src/",
+  tests: "test/",
+  extension: "ext/",
+  benchmarks: "benchmark/"
+}
+
+@critical-invariants {
+  rule: "SCM files in .machine_readable/ ONLY — never in repository root",
+  rule: "All source files must have SPDX-License-Identifier: PMPL-1.0-or-later header",
+  rule: "All 493+ tests must pass before commit",
+  rule: "KnotTheory.jl is a weakdep — never add as hard dependency"
+}
+
+@lifecycle {
+  on-enter: "Read this manifest, then .machine_readable/STATE.scm",
+  on-exit: "Update STATE.scm with session progress"
+}
+
+@project-overview {
+  name: "Skein.jl",
+  type: "Julia package",
+  purpose: "Knot-theoretic database — store, index, and query knots by topological invariants",
+  primary-representation: "Gauss codes (signed integer sequences)",
+  storage-backend: "SQLite (via SQLite.jl)",
+  extension: "KnotTheory.jl integration via Julia package extensions (weakdeps)"
+}

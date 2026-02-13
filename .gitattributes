@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# RSR-compliant .gitattributes
+
+* text=auto eol=lf
+
+# Source
+*.jl    text eol=lf
+
+# Docs
+*.md    text eol=lf diff=markdown
+*.adoc  text eol=lf
+*.txt   text eol=lf
+
+# Data
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.csv   text eol=lf
+
+# Config
+.gitignore     text eol=lf
+.gitattributes text eol=lf
+.editorconfig  text eol=lf
+justfile       text eol=lf
+
+# Scripts
+*.sh   text eol=lf
+
+# SCM
+*.scm  text eol=lf
+
+# Binary
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.pdf   binary
+*.db    binary
+*.sqlite binary
+
+# Lock files — track but don't diff
+Manifest.toml text eol=lf -diff

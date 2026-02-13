@@ -186,3 +186,141 @@ function statistics(db::SkeinDB)
         crossing_distribution = distribution
     )
 end
+
+"""
+    find_equivalents(db::SkeinDB, g::GaussCode) -> Vector{KnotRecord}
+
+Find all knots in the database whose Gauss code is equivalent to `g`
+(same diagram up to cyclic rotation and relabelling).
+"""
+function find_equivalents(db::SkeinDB, g::GaussCode)::Vector{KnotRecord}
+    cn = crossing_number(g)
+    candidates = query(db, crossing_number = cn)
+    filter(r -> is_equivalent(r.gauss_code, g), candidates)
+end
+
+"""
+    find_isotopic(db::SkeinDB, g::GaussCode) -> Vector{KnotRecord}
+
+Find all knots in the database that are topologically equivalent to `g`
+(after Reidemeister I simplification + cyclic rotation + relabelling).
+"""
+function find_isotopic(db::SkeinDB, g::GaussCode)::Vector{KnotRecord}
+    s = simplify_r1(g)
+    cn = crossing_number(s)
+    # Check knots with same or fewer crossings (R1 can reduce crossing number)
+    candidates = query(db, crossing_number = 0:max(cn, crossing_number(g)))
+    filter(r -> is_isotopic(r.gauss_code, g), candidates)
+end
+
+# -- Composable query predicates --
+
+"""
+    QueryPredicate
+
+Abstract type for composable query predicates. Supports `&` (AND) and `|` (OR)
+composition for building complex queries.
+
+# Examples
+```julia
+# Compose with & and |
+q = (crossing(3) | crossing(4)) & writhe_eq(0)
+results = query(db, q)
+```
+"""
+abstract type QueryPredicate end
+
+struct CrossingPred <: QueryPredicate
+    value::Any  # Int, UnitRange, or Vector{Int}
+end
+
+struct WrithePred <: QueryPredicate
+    value::Any
+end
+
+struct MetaPred <: QueryPredicate
+    key::String
+    value::String
+end
+
+struct NamePred <: QueryPredicate
+    pattern::String
+end
+
+struct AndPred <: QueryPredicate
+    left::QueryPredicate
+    right::QueryPredicate
+end
+
+struct OrPred <: QueryPredicate
+    left::QueryPredicate
+    right::QueryPredicate
+end
+
+# Constructors
+crossing(v) = CrossingPred(v)
+writhe_eq(v) = WrithePred(v)
+meta_eq(k, v) = MetaPred(k, v)
+name_like(p) = NamePred(p)
+
+# Composition operators
+Base.:(&)(a::QueryPredicate, b::QueryPredicate) = AndPred(a, b)
+Base.:(|)(a::QueryPredicate, b::QueryPredicate) = OrPred(a, b)
+
+"""
+    query(db::SkeinDB, pred::QueryPredicate; limit=100, offset=0) -> Vector{KnotRecord}
+
+Query knots using composable predicates built with `crossing()`, `writhe_eq()`,
+`meta_eq()`, `name_like()`, and combined with `&` (AND) and `|` (OR).
+"""
+function query(db::SkeinDB, pred::QueryPredicate; limit::Int = 100, offset::Int = 0)
+    results = list_knots(db; limit = typemax(Int))
+    filtered = filter(r -> evaluate_predicate(pred, r), results)
+
+    # Apply pagination
+    start = min(offset + 1, length(filtered) + 1)
+    stop = min(offset + limit, length(filtered))
+    start > stop ? KnotRecord[] : filtered[start:stop]
+end
+
+function evaluate_predicate(p::CrossingPred, r::KnotRecord)::Bool
+    _match_value(r.crossing_number, p.value)
+end
+
+function evaluate_predicate(p::WrithePred, r::KnotRecord)::Bool
+    _match_value(r.writhe, p.value)
+end
+
+function evaluate_predicate(p::MetaPred, r::KnotRecord)::Bool
+    get(r.metadata, p.key, "") == p.value
+end
+
+function evaluate_predicate(p::NamePred, r::KnotRecord)::Bool
+    # Simple pattern matching (SQL LIKE -> Julia)
+    pattern = replace(p.pattern, "%" => ".*", "_" => ".")
+    occursin(Regex("^" * pattern * "\$"), r.name)
+end
+
+function evaluate_predicate(p::AndPred, r::KnotRecord)::Bool
+    evaluate_predicate(p.left, r) && evaluate_predicate(p.right, r)
+end
+
+function evaluate_predicate(p::OrPred, r::KnotRecord)::Bool
+    evaluate_predicate(p.left, r) || evaluate_predicate(p.right, r)
+end
+
+function _match_value(actual::Int, expected::Int)
+    actual == expected
+end
+
+function _match_value(actual::Int, expected::UnitRange{Int})
+    actual in expected
+end
+
+function _match_value(actual::Int, expected::Vector{Int})
+    actual in expected
+end
+
+function _match_value(actual::Int, expected::StepRange{Int, Int})
+    actual in expected
+end

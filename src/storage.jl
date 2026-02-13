@@ -9,18 +9,19 @@ key-value pairs. Invariants are stored as indexed columns for fast
 filtering. The Gauss code itself is stored as a JSON array of integers.
 """
 
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 const CREATE_TABLES = """
 CREATE TABLE IF NOT EXISTS knots (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL UNIQUE,
-    gauss_code  TEXT NOT NULL,
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    gauss_code      TEXT NOT NULL,
     crossing_number INTEGER NOT NULL,
-    writhe      INTEGER NOT NULL,
-    gauss_hash  TEXT NOT NULL,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    writhe          INTEGER NOT NULL,
+    gauss_hash      TEXT NOT NULL,
+    jones_polynomial TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS knot_metadata (
@@ -39,7 +40,13 @@ CREATE TABLE IF NOT EXISTS schema_info (
 CREATE INDEX IF NOT EXISTS idx_knots_crossing ON knots(crossing_number);
 CREATE INDEX IF NOT EXISTS idx_knots_writhe ON knots(writhe);
 CREATE INDEX IF NOT EXISTS idx_knots_hash ON knots(gauss_hash);
+CREATE INDEX IF NOT EXISTS idx_knots_jones ON knots(jones_polynomial);
 CREATE INDEX IF NOT EXISTS idx_metadata_key ON knot_metadata(key);
+"""
+
+const MIGRATE_V1_TO_V2 = """
+ALTER TABLE knots ADD COLUMN jones_polynomial TEXT;
+CREATE INDEX IF NOT EXISTS idx_knots_jones ON knots(jones_polynomial);
 """
 
 """
@@ -71,6 +78,12 @@ mutable struct SkeinDB
             for stmt in split(CREATE_TABLES, ";")
                 stripped = strip(stmt)
                 isempty(stripped) || DBInterface.execute(conn, stripped)
+            end
+
+            # Check for schema migration
+            current_version = _get_schema_version(conn)
+            if current_version < 2
+                _migrate_v1_to_v2(conn)
             end
 
             # Record schema version
@@ -131,7 +144,8 @@ store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]),
 ```
 """
 function store!(db::SkeinDB, name::String, g::GaussCode;
-                metadata::Dict{String, String} = Dict{String, String}())
+                metadata::Dict{String, String} = Dict{String, String}(),
+                jones_polynomial::Union{String, Nothing} = nothing)
     db.readonly && error("Database is read-only")
 
     id = string(uuid4())
@@ -142,9 +156,9 @@ function store!(db::SkeinDB, name::String, g::GaussCode;
     now = string(Dates.now())
 
     DBInterface.execute(db.conn,
-        """INSERT INTO knots (id, name, gauss_code, crossing_number, writhe, gauss_hash, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        [id, name, code_str, cn, w, h, now, now])
+        """INSERT INTO knots (id, name, gauss_code, crossing_number, writhe, gauss_hash, jones_polynomial, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [id, name, code_str, cn, w, h, jones_polynomial === nothing ? missing : jones_polynomial, now, now])
 
     for (k, v) in metadata
         DBInterface.execute(db.conn,
@@ -167,6 +181,7 @@ function fetch_knot(db::SkeinDB, name::String)::Union{KnotRecord, Nothing}
     for row in result
         id = string(row[:id])
         meta = fetch_metadata(db, id)
+        jp = ismissing(row[:jones_polynomial]) ? nothing : string(row[:jones_polynomial])
         return KnotRecord(
             id,
             string(row[:name]),
@@ -174,6 +189,7 @@ function fetch_knot(db::SkeinDB, name::String)::Union{KnotRecord, Nothing}
             Int(row[:crossing_number]),
             Int(row[:writhe]),
             string(row[:gauss_hash]),
+            jp,
             meta,
             DateTime(string(row[:created_at])),
             DateTime(string(row[:updated_at]))
@@ -240,6 +256,7 @@ end
 function row_to_record(db::SkeinDB, row)::KnotRecord
     id = string(row[:id])
     meta = fetch_metadata(db, id)
+    jp = ismissing(row[:jones_polynomial]) ? nothing : string(row[:jones_polynomial])
     KnotRecord(
         id,
         string(row[:name]),
@@ -247,8 +264,39 @@ function row_to_record(db::SkeinDB, row)::KnotRecord
         Int(row[:crossing_number]),
         Int(row[:writhe]),
         string(row[:gauss_hash]),
+        jp,
         meta,
         DateTime(string(row[:created_at])),
         DateTime(string(row[:updated_at]))
     )
+end
+
+# -- Schema migration helpers --
+
+function _get_schema_version(conn::SQLite.DB)::Int
+    try
+        for row in DBInterface.execute(conn, "SELECT value FROM schema_info WHERE key = 'version'")
+            return parse(Int, string(row[:value]))
+        end
+    catch
+    end
+    return 1
+end
+
+function _migrate_v1_to_v2(conn::SQLite.DB)
+    # Check if jones_polynomial column already exists
+    has_jones = false
+    for row in DBInterface.execute(conn, "PRAGMA table_info(knots)")
+        if string(row[:name]) == "jones_polynomial"
+            has_jones = true
+            break
+        end
+    end
+
+    if !has_jones
+        for stmt in split(MIGRATE_V1_TO_V2, ";")
+            stripped = strip(stmt)
+            isempty(stripped) || DBInterface.execute(conn, stripped)
+        end
+    end
 end

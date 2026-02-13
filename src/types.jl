@@ -61,6 +61,7 @@ struct KnotRecord
     crossing_number::Int
     writhe::Int
     gauss_hash::String
+    jones_polynomial::Union{String, Nothing}
     metadata::Dict{String, String}
     created_at::DateTime
     updated_at::DateTime

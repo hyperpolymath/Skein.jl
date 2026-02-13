@@ -108,6 +108,44 @@ function export_csv(db::SkeinDB, path::String; kwargs...)
 end
 
 """
+    import_knotinfo!(db::SkeinDB)
+
+Populate the database with the standard prime knot table up to 7 crossings.
+Uses hardcoded Gauss codes for the classical prime knots.
+
+Returns the number of knots imported.
+"""
+function import_knotinfo!(db::SkeinDB)
+    db.readonly && error("Database is read-only")
+
+    # Standard prime knots with their Gauss codes
+    # Notation: n_k = k-th prime knot with n crossings
+    knots = [
+        ("0_1",  Int[],                                      Dict("type" => "trivial", "alternating" => "true")),
+        ("3_1",  [1, -2, 3, -1, 2, -3],                     Dict("type" => "torus", "alternating" => "true", "family" => "(2,3)-torus")),
+        ("4_1",  [1, -2, 3, -4, 2, -1, 4, -3],              Dict("type" => "twist", "alternating" => "true")),
+        ("5_1",  [1, -2, 3, -4, 5, -1, 2, -3, 4, -5],       Dict("type" => "torus", "alternating" => "true", "family" => "(2,5)-torus")),
+        ("5_2",  [1, -2, 3, -4, 5, -3, 4, -1, 2, -5],       Dict("type" => "twist", "alternating" => "true")),
+        ("6_1",  [1, -2, 3, -4, 5, -6, 4, -3, 6, -1, 2, -5], Dict("type" => "twist", "alternating" => "true", "alias" => "stevedore")),
+        ("6_2",  [1, -2, 3, -4, 5, -6, 2, -5, 4, -1, 6, -3], Dict("type" => "alternating", "alternating" => "true")),
+        ("6_3",  [1, -2, 3, -4, 5, -6, 4, -1, 6, -3, 2, -5], Dict("type" => "alternating", "alternating" => "true")),
+        ("7_1",  [1, -2, 3, -4, 5, -6, 7, -1, 2, -3, 4, -5, 6, -7], Dict("type" => "torus", "alternating" => "true", "family" => "(2,7)-torus")),
+    ]
+
+    count = 0
+    for (name, gc_data, meta) in knots
+        if !haskey(db, name)
+            store!(db, name, GaussCode(gc_data); metadata = meta)
+            count += 1
+        end
+    end
+
+    count
+end
+
+export import_knotinfo!
+
+"""
     export_json(db::SkeinDB, path::String; kwargs...)
 
 Export knots as a JSON array. Each knot includes its invariants

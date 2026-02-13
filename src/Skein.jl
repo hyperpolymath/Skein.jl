@@ -45,12 +45,20 @@ export GaussCode, KnotRecord, SkeinDB
 # Database operations
 export store!, query, fetch_knot, list_knots
 export update_metadata!, bulk_import!
+export import_csv!, export_csv, export_json
 
 # Database lifecycle
 export close, isopen
 
 # Invariant computation (standalone, without KnotTheory.jl)
 export crossing_number, writhe, gauss_hash
+
+# Equivalence checking
+export is_equivalent, is_isotopic, is_amphichiral, mirror, simplify_r1, canonical_gauss
+export find_equivalents, find_isotopic
+
+# Composable query predicates
+export QueryPredicate, crossing, writhe_eq, meta_eq, name_like
 
 include("types.jl")
 include("invariants.jl")
