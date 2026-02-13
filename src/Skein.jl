@@ -60,10 +60,11 @@ export find_equivalents, find_isotopic
 
 # Polynomial invariants
 export LaurentPoly, bracket_polynomial, jones_from_bracket, jones_polynomial_str
+export seifert_circles, genus
 export serialise_laurent, deserialise_laurent
 
 # Composable query predicates
-export QueryPredicate, crossing, writhe_eq, meta_eq, name_like
+export QueryPredicate, crossing, writhe_eq, genus_eq, meta_eq, name_like
 
 include("types.jl")
 include("polynomials.jl")

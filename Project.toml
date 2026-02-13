@@ -1,7 +1,7 @@
 name = "Skein"
 uuid = "e8a1f3d0-7c42-4e9a-b5d1-3a7f8c2e1d0b"
 authors = ["Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"

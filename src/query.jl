@@ -34,6 +34,7 @@ Query knots by invariant values. Supported keyword arguments:
 
 - `crossing_number`: Int, UnitRange, or Vector{Int}
 - `writhe`: Int, UnitRange, or Vector{Int}
+- `genus`: Int, UnitRange, or Vector{Int}
 - `gauss_hash`: String (exact match)
 - `name_like`: String (SQL LIKE pattern, e.g. "torus%")
 - `meta`: Pair{String,String} — match a metadata key-value pair
@@ -43,6 +44,7 @@ Query knots by invariant values. Supported keyword arguments:
 function query(db::SkeinDB;
                crossing_number = nothing,
                writhe = nothing,
+               genus = nothing,
                gauss_hash = nothing,
                name_like = nothing,
                meta = nothing,
@@ -61,6 +63,12 @@ function query(db::SkeinDB;
 
     if !isnothing(writhe)
         cond, ps = build_condition("k.writhe", writhe)
+        push!(conditions, cond)
+        append!(params, ps)
+    end
+
+    if !isnothing(genus)
+        cond, ps = build_condition("k.genus", genus)
         push!(conditions, cond)
         append!(params, ps)
     end
@@ -238,6 +246,10 @@ struct WrithePred <: QueryPredicate
     value::Any
 end
 
+struct GenusPred <: QueryPredicate
+    value::Any
+end
+
 struct MetaPred <: QueryPredicate
     key::String
     value::String
@@ -260,6 +272,7 @@ end
 # Constructors
 crossing(v) = CrossingPred(v)
 writhe_eq(v) = WrithePred(v)
+genus_eq(v) = GenusPred(v)
 meta_eq(k, v) = MetaPred(k, v)
 name_like(p) = NamePred(p)
 
@@ -289,6 +302,11 @@ end
 
 function evaluate_predicate(p::WrithePred, r::KnotRecord)::Bool
     _match_value(r.writhe, p.value)
+end
+
+function evaluate_predicate(p::GenusPred, r::KnotRecord)::Bool
+    isnothing(r.genus) && return false
+    _match_value(r.genus, p.value)
 end
 
 function evaluate_predicate(p::MetaPred, r::KnotRecord)::Bool

@@ -227,3 +227,67 @@ Format: "exp:coeff,exp:coeff,..." sorted by exponent.
 function jones_polynomial_str(g::GaussCode)::String
     serialise_laurent(jones_from_bracket(g))
 end
+
+# -- Seifert circles --
+
+"""
+    seifert_circles(g::GaussCode) -> Vector{Vector{Int}}
+
+Compute the Seifert circles from a Gauss code. Returns a vector of
+circles, where each circle is a vector of positions (1-indexed) in
+the Gauss code that belong to that circle.
+
+The algorithm: at each position i, instead of continuing to i+1,
+jump to the partner position of the same crossing + 1.
+"""
+function seifert_circles(g::GaussCode)::Vector{Vector{Int}}
+    L = length(g.crossings)
+    L == 0 && return [Int[]]
+
+    # Build partner map: position → other position of same crossing
+    partner = Vector{Int}(undef, L)
+    pos_map = Dict{Int, Vector{Int}}()
+    for i in 1:L
+        c = abs(g.crossings[i])
+        ps = get!(pos_map, c, Int[])
+        push!(ps, i)
+    end
+    for (_, ps) in pos_map
+        partner[ps[1]] = ps[2]
+        partner[ps[2]] = ps[1]
+    end
+
+    # seifert_next[i] = mod1(partner[i] + 1, L)
+    seifert_next = [mod1(partner[i] + 1, L) for i in 1:L]
+
+    # Find cycles
+    visited = falses(L)
+    circles = Vector{Vector{Int}}()
+    for start in 1:L
+        visited[start] && continue
+        circle = Int[]
+        i = start
+        while true
+            push!(circle, i)
+            visited[i] = true
+            i = seifert_next[i]
+            i == start && break
+        end
+        push!(circles, circle)
+    end
+
+    circles
+end
+
+"""
+    genus(g::GaussCode) -> Int
+
+Compute the genus of the Seifert surface from the Gauss code.
+genus = (crossings - seifert_circles + 1) / 2
+"""
+function genus(g::GaussCode)::Int
+    n = crossing_number(g)
+    n == 0 && return 0
+    s = length(seifert_circles(g))
+    div(n - s + 1, 2)
+end

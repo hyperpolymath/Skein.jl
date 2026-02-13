@@ -34,18 +34,32 @@ Base.show(io::IO, g::GaussCode) = print(io, "GaussCode(", g.crossings, ")")
 
 """
 Validate that a Gauss code is well-formed:
-each crossing index appears exactly twice with opposite signs.
+- Each crossing index appears exactly twice
+- Each crossing appears once with positive sign and once with negative sign
+- No zero entries
 """
 function validate_gauss_code(crossings::Vector{Int})
     isempty(crossings) && return true  # unknot
 
+    # No zeros allowed
+    any(c -> c == 0, crossings) && return false
+
+    # Each crossing must appear exactly twice
     counts = Dict{Int, Int}()
     for c in crossings
         idx = abs(c)
         counts[idx] = get(counts, idx, 0) + 1
     end
+    all(v -> v == 2, values(counts)) || return false
 
-    all(v -> v == 2, values(counts))
+    # Each crossing must appear once positive and once negative
+    signs = Dict{Int, Set{Int}}()
+    for c in crossings
+        idx = abs(c)
+        s = get!(signs, idx, Set{Int}())
+        push!(s, sign(c))
+    end
+    all(v -> length(v) == 2 && 1 in v && -1 in v, values(signs))
 end
 
 """
@@ -62,11 +76,14 @@ struct KnotRecord
     writhe::Int
     gauss_hash::String
     jones_polynomial::Union{String, Nothing}
+    genus::Union{Int, Nothing}
+    seifert_circle_count::Union{Int, Nothing}
     metadata::Dict{String, String}
     created_at::DateTime
     updated_at::DateTime
 end
 
 function Base.show(io::IO, k::KnotRecord)
-    print(io, "KnotRecord(\"", k.name, "\", crossings=", k.crossing_number, ")")
+    print(io, "KnotRecord(\"", k.name, "\", crossings=", k.crossing_number,
+          ", genus=", something(k.genus, "?"), ")")
 end

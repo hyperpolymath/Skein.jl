@@ -70,7 +70,9 @@ using Random
         @test record.gauss_code == trefoil
         @test record.metadata["family"] == "torus"
         @test record.metadata["notation"] == "3_1"
-        @test record.jones_polynomial === nothing  # not computed standalone
+        @test record.jones_polynomial !== nothing  # auto-computed
+        @test record.genus !== nothing
+        @test record.seifert_circle_count !== nothing
 
         # Not found
         @test isnothing(fetch_knot(db, "nonexistent"))
@@ -78,20 +80,34 @@ using Random
         close(db)
     end
 
-    @testset "Jones polynomial column" begin
+    @testset "Auto-computed invariants" begin
         db = SkeinDB(":memory:")
 
-        # Store with explicit Jones polynomial
-        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]);
-               jones_polynomial = "-4:1,-3:1,-1:1")
-
+        # Jones polynomial auto-computed on store
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
         record = fetch_knot(db, "trefoil")
-        @test record.jones_polynomial == "-4:1,-3:1,-1:1"
+        @test record.jones_polynomial !== nothing
+        @test record.jones_polynomial isa String
+        @test length(record.jones_polynomial) > 0
 
-        # Store without Jones polynomial
+        # Genus and Seifert circles auto-computed
+        @test record.genus !== nothing
+        @test record.genus isa Int
+        @test record.genus >= 0
+        @test record.seifert_circle_count !== nothing
+        @test record.seifert_circle_count >= 1
+
+        # Unknot should have genus 0
         store!(db, "unknot", GaussCode(Int[]))
         record2 = fetch_knot(db, "unknot")
-        @test record2.jones_polynomial === nothing
+        @test record2.genus == 0
+        @test record2.jones_polynomial !== nothing
+
+        # Explicit Jones overrides auto-computation
+        store!(db, "manual", GaussCode([1, -2, 3, -1, 2, -3]);
+               jones_polynomial = "custom_value")
+        record3 = fetch_knot(db, "manual")
+        @test record3.jones_polynomial == "custom_value"
 
         close(db)
     end
@@ -710,6 +726,157 @@ using Random
         dups = Skein.duplicates(db)
         @test length(dups) == 1
         @test length(dups[1]) == 2
+
+        close(db)
+    end
+
+    @testset "Seifert circles" begin
+        # Unknot: 0 crossings → 1 empty circle
+        sc0 = seifert_circles(GaussCode(Int[]))
+        @test length(sc0) == 1
+
+        # Trefoil: 3 crossings → 2 Seifert circles
+        trefoil = GaussCode([1, -2, 3, -1, 2, -3])
+        sc_t = seifert_circles(trefoil)
+        @test length(sc_t) == 2
+
+        # Figure-eight: 4 crossings → 3 Seifert circles
+        fig8 = GaussCode([1, -2, 3, -4, 2, -1, 4, -3])
+        sc_f = seifert_circles(fig8)
+        @test length(sc_f) == 3
+
+        # All positions covered
+        all_positions = sort(vcat(sc_t...))
+        @test all_positions == collect(1:6)
+    end
+
+    @testset "Genus" begin
+        # Unknot: genus 0
+        @test genus(GaussCode(Int[])) == 0
+
+        # Trefoil: genus = (3 - 2 + 1) / 2 = 1
+        @test genus(GaussCode([1, -2, 3, -1, 2, -3])) == 1
+
+        # Figure-eight: genus = (4 - 3 + 1) / 2 = 1
+        @test genus(GaussCode([1, -2, 3, -4, 2, -1, 4, -3])) == 1
+    end
+
+    @testset "Genus query" begin
+        db = SkeinDB(":memory:")
+        import_knotinfo!(db)
+
+        # Query by genus
+        results = query(db, genus = 1)
+        @test length(results) > 0
+        @test all(r -> r.genus == 1, results)
+
+        # Unknot has genus 0
+        results0 = query(db, genus = 0)
+        @test length(results0) == 1
+        @test results0[1].name == "0_1"
+
+        # Composable genus predicate
+        results2 = query(db, genus_eq(1) & crossing(3))
+        @test length(results2) == 1
+        @test results2[1].name == "3_1"
+
+        close(db)
+    end
+
+    @testset "Read-only mode" begin
+        # Create a DB with data, reopen as read-only
+        tmppath = tempname() * ".db"
+        db = SkeinDB(tmppath)
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+        close(db)
+
+        rodb = SkeinDB(tmppath; readonly = true)
+        @test isopen(rodb)
+
+        # Can read
+        record = fetch_knot(rodb, "trefoil")
+        @test !isnothing(record)
+        @test record.name == "trefoil"
+
+        # Can query
+        results = query(rodb, crossing_number = 3)
+        @test length(results) == 1
+
+        # Cannot write
+        @test_throws ErrorException store!(rodb, "unknot", GaussCode(Int[]))
+        @test_throws ErrorException update_metadata!(rodb, "trefoil", Dict("k" => "v"))
+
+        close(rodb)
+        rm(tmppath)
+    end
+
+    @testset "Input validation" begin
+        # Valid codes don't warn
+        @test Skein.validate_gauss_code(Int[]) == true
+        @test Skein.validate_gauss_code([1, -2, 3, -1, 2, -3]) == true
+
+        # Zero entries are invalid
+        @test Skein.validate_gauss_code([0, 0]) == false
+
+        # Same sign twice is invalid
+        @test Skein.validate_gauss_code([1, 1]) == false
+
+        # Crossing appearing once is invalid
+        @test Skein.validate_gauss_code([1, -2, -1]) == false
+
+        # Crossing appearing 3 times is invalid
+        @test Skein.validate_gauss_code([1, -1, 1, -2, 2, -2]) == false
+    end
+
+    @testset "Schema migration v2→v3" begin
+        # Create a v2-style database and verify migration
+        tmppath = tempname() * ".db"
+        db = SkeinDB(tmppath)
+
+        # Store a knot — new schema should have genus
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+        record = fetch_knot(db, "trefoil")
+        @test record.genus == 1
+        @test record.seifert_circle_count == 2
+
+        close(db)
+        rm(tmppath)
+    end
+
+    @testset "Duplicate name handling" begin
+        db = SkeinDB(":memory:")
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+
+        # Storing same name should throw (UNIQUE constraint)
+        @test_throws Exception store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+
+        close(db)
+    end
+
+    @testset "Display methods" begin
+        db = SkeinDB(":memory:")
+        store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+
+        # GaussCode show
+        gc = GaussCode([1, -2, 3, -1, 2, -3])
+        buf = IOBuffer()
+        show(buf, gc)
+        @test occursin("GaussCode", String(take!(buf)))
+
+        # KnotRecord show
+        record = fetch_knot(db, "trefoil")
+        buf2 = IOBuffer()
+        show(buf2, record)
+        s = String(take!(buf2))
+        @test occursin("trefoil", s)
+        @test occursin("genus=", s)
+
+        # SkeinDB show
+        buf3 = IOBuffer()
+        show(buf3, db)
+        s3 = String(take!(buf3))
+        @test occursin("SkeinDB", s3)
+        @test occursin("1 knots", s3)
 
         close(db)
     end

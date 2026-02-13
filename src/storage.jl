@@ -9,7 +9,7 @@ key-value pairs. Invariants are stored as indexed columns for fast
 filtering. The Gauss code itself is stored as a JSON array of integers.
 """
 
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 const CREATE_TABLES = """
 CREATE TABLE IF NOT EXISTS knots (
@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS knots (
     writhe          INTEGER NOT NULL,
     gauss_hash      TEXT NOT NULL,
     jones_polynomial TEXT,
+    genus           INTEGER,
+    seifert_circles INTEGER,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -41,12 +43,19 @@ CREATE INDEX IF NOT EXISTS idx_knots_crossing ON knots(crossing_number);
 CREATE INDEX IF NOT EXISTS idx_knots_writhe ON knots(writhe);
 CREATE INDEX IF NOT EXISTS idx_knots_hash ON knots(gauss_hash);
 CREATE INDEX IF NOT EXISTS idx_knots_jones ON knots(jones_polynomial);
+CREATE INDEX IF NOT EXISTS idx_knots_genus ON knots(genus);
 CREATE INDEX IF NOT EXISTS idx_metadata_key ON knot_metadata(key);
 """
 
 const MIGRATE_V1_TO_V2 = """
 ALTER TABLE knots ADD COLUMN jones_polynomial TEXT;
 CREATE INDEX IF NOT EXISTS idx_knots_jones ON knots(jones_polynomial);
+"""
+
+const MIGRATE_V2_TO_V3 = """
+ALTER TABLE knots ADD COLUMN genus INTEGER;
+ALTER TABLE knots ADD COLUMN seifert_circles INTEGER;
+CREATE INDEX IF NOT EXISTS idx_knots_genus ON knots(genus);
 """
 
 """
@@ -84,6 +93,9 @@ mutable struct SkeinDB
             current_version = _get_schema_version(conn)
             if current_version < 2
                 _migrate_v1_to_v2(conn)
+            end
+            if current_version < 3
+                _migrate_v2_to_v3(conn)
             end
 
             # Record schema version
@@ -143,6 +155,10 @@ store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]),
        metadata = Dict("family" => "torus", "notation" => "3_1"))
 ```
 """
+# Maximum crossing number for auto-computing Jones polynomial on store.
+# Jones computation is O(2^n), so we cap it to keep store! responsive.
+const MAX_CROSSINGS_FOR_AUTO_JONES = 15
+
 function store!(db::SkeinDB, name::String, g::GaussCode;
                 metadata::Dict{String, String} = Dict{String, String}(),
                 jones_polynomial::Union{String, Nothing} = nothing)
@@ -155,10 +171,23 @@ function store!(db::SkeinDB, name::String, g::GaussCode;
     code_str = serialise_gauss(g)
     now = string(Dates.now())
 
+    # Auto-compute Jones polynomial if not provided and crossing count is manageable
+    jp = jones_polynomial
+    if jp === nothing && cn <= MAX_CROSSINGS_FOR_AUTO_JONES
+        jp = jones_polynomial_str(g)
+    end
+
+    # Compute Seifert circles and genus
+    sc = length(seifert_circles(g))
+    gen = genus(g)
+
     DBInterface.execute(db.conn,
-        """INSERT INTO knots (id, name, gauss_code, crossing_number, writhe, gauss_hash, jones_polynomial, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        [id, name, code_str, cn, w, h, jones_polynomial === nothing ? missing : jones_polynomial, now, now])
+        """INSERT INTO knots (id, name, gauss_code, crossing_number, writhe, gauss_hash,
+           jones_polynomial, genus, seifert_circles, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [id, name, code_str, cn, w, h,
+         jp === nothing ? missing : jp,
+         gen, sc, now, now])
 
     for (k, v) in metadata
         DBInterface.execute(db.conn,
@@ -182,6 +211,8 @@ function fetch_knot(db::SkeinDB, name::String)::Union{KnotRecord, Nothing}
         id = string(row[:id])
         meta = fetch_metadata(db, id)
         jp = ismissing(row[:jones_polynomial]) ? nothing : string(row[:jones_polynomial])
+        gen = ismissing(row[:genus]) ? nothing : Int(row[:genus])
+        sc = ismissing(row[:seifert_circles]) ? nothing : Int(row[:seifert_circles])
         return KnotRecord(
             id,
             string(row[:name]),
@@ -190,6 +221,8 @@ function fetch_knot(db::SkeinDB, name::String)::Union{KnotRecord, Nothing}
             Int(row[:writhe]),
             string(row[:gauss_hash]),
             jp,
+            gen,
+            sc,
             meta,
             DateTime(string(row[:created_at])),
             DateTime(string(row[:updated_at]))
@@ -257,6 +290,8 @@ function row_to_record(db::SkeinDB, row)::KnotRecord
     id = string(row[:id])
     meta = fetch_metadata(db, id)
     jp = ismissing(row[:jones_polynomial]) ? nothing : string(row[:jones_polynomial])
+    gen = ismissing(row[:genus]) ? nothing : Int(row[:genus])
+    sc = ismissing(row[:seifert_circles]) ? nothing : Int(row[:seifert_circles])
     KnotRecord(
         id,
         string(row[:name]),
@@ -265,6 +300,8 @@ function row_to_record(db::SkeinDB, row)::KnotRecord
         Int(row[:writhe]),
         string(row[:gauss_hash]),
         jp,
+        gen,
+        sc,
         meta,
         DateTime(string(row[:created_at])),
         DateTime(string(row[:updated_at]))
@@ -299,4 +336,19 @@ function _migrate_v1_to_v2(conn::SQLite.DB)
             isempty(stripped) || DBInterface.execute(conn, stripped)
         end
     end
+end
+
+function _migrate_v2_to_v3(conn::SQLite.DB)
+    existing_cols = Set{String}()
+    for row in DBInterface.execute(conn, "PRAGMA table_info(knots)")
+        push!(existing_cols, string(row[:name]))
+    end
+
+    if !("genus" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN genus INTEGER")
+    end
+    if !("seifert_circles" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN seifert_circles INTEGER")
+    end
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_genus ON knots(genus)")
 end
