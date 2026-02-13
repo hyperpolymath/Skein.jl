@@ -1,0 +1,28 @@
+name = "Skein"
+uuid = "e8a1f3d0-7c42-4e9a-b5d1-3a7f8c2e1d0b"
+authors = ["Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"]
+version = "0.1.0"
+
+[deps]
+DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[weakdeps]
+KnotTheory = "00000000-0000-0000-0000-000000000001"
+
+[extensions]
+KnotTheoryExt = "KnotTheory"
+
+[compat]
+DBInterface = "2"
+SQLite = "1"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

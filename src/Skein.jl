@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+"""
+    Skein.jl — A knot-theoretic database for Julia
+
+Skein provides storage, indexing, and querying of knot and link data.
+Built to work standalone with raw Gauss codes, or as a persistence layer
+on top of KnotTheory.jl when that package is loaded.
+
+# Quick start
+
+```julia
+using Skein
+
+db = SkeinDB("my_knots.db")
+
+# Store knots by Gauss code
+store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+store!(db, "figure-eight", GaussCode([1, -2, 3, -4, 2, -1, 4, -3]))
+
+# Query by invariant
+results = query(db, crossing_number = 3)
+
+# Retrieve
+k = fetch_knot(db, "trefoil")
+
+close(db)
+```
+
+When KnotTheory.jl is loaded, additional methods become available for
+direct storage and retrieval of PlanarDiagram types and richer invariants.
+"""
+module Skein
+
+using SQLite
+using DBInterface
+using Dates
+using SHA
+using UUIDs
+
+# Core types
+export GaussCode, KnotRecord, SkeinDB
+
+# Database operations
+export store!, query, fetch_knot, list_knots
+export update_metadata!, bulk_import!
+
+# Database lifecycle
+export close, isopen
+
+# Invariant computation (standalone, without KnotTheory.jl)
+export crossing_number, writhe, gauss_hash
+
+include("types.jl")
+include("invariants.jl")
+include("storage.jl")
+include("query.jl")
+include("import_export.jl")
+
+end # module Skein

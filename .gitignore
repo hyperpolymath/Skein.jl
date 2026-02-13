@@ -1,0 +1,25 @@
+# Julia
+Manifest.toml
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+deps/build.log
+
+# SQLite databases (generated during testing/use)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+.directory
+Thumbs.db
+
+# AI artifacts
+ai-cli-crash-capture/
+sync_report*.txt
