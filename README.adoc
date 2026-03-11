@@ -1,0 +1,166 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+= Skein.jl
+:toc: macro
+:toclevels: 2
+
+image:https://img.shields.io/badge/Project-Topology-9558B2[Topology,link="TOPOLOGY.md"]
+image:https://img.shields.io/badge/Completion-75%25-yellow[75%,link="TOPOLOGY.md"]
+
+A knot-theoretic database for Julia. Store, index, and query knots by their topological invariants.
+
+image:https://img.shields.io/badge/Julia-1.10+-blue.svg[Julia 1.10+]
+image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[PMPL-1.0-or-later]
+
+toc::[]
+
+== What is this?
+
+Skein.jl is a lightweight database layer for knot theory data. It stores knots as Gauss codes, automatically computes invariants on insert, and lets you query by those invariants.
+
+Named after the https://en.wikipedia.org/wiki/Skein_relation[skein relation] — the algebraic rule that decomposes a knot crossing into simpler pieces, much like a query decomposes a database into matching records.
+
+Works standalone, or as a persistence layer on top of https://github.com/hyperpolymath/KnotTheory.jl[KnotTheory.jl].
+
+== Quick start
+
+[source,julia]
+----
+using Skein
+
+db = SkeinDB("knots.db")
+
+# Store knots by Gauss code
+store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]),
+       metadata = Dict("family" => "torus", "notation" => "3_1"))
+
+store!(db, "figure-eight", GaussCode([1, -2, 3, -4, 2, -1, 4, -3]),
+       metadata = Dict("family" => "twist", "notation" => "4_1"))
+
+# Query by invariant
+three_crossings = query(db, crossing_number = 3)
+
+# Range queries
+small_knots = query(db, crossing_number = 0:5)
+
+# Metadata queries
+torus_knots = query(db, meta = ("family" => "torus"))
+
+# Composable query predicates
+results = query(db, (crossing(3) | crossing(4)) & meta_eq("family", "torus"))
+
+# Statistics
+stats = Skein.statistics(db)
+# (total_knots = 2, min_crossings = 3, max_crossings = 4, ...)
+
+close(db)
+----
+
+== With KnotTheory.jl
+
+When both packages are loaded, additional methods become available:
+
+[source,julia]
+----
+using KnotTheory, Skein
+
+db = SkeinDB("research.db")
+
+# Store KnotTheory Knot types directly
+store!(db, "trefoil", Knot(3, 1))
+
+# PlanarDiagram types are auto-converted to Gauss codes
+pd = PlanarDiagram(...)
+store!(db, "my-knot", pd)
+
+# Jones polynomial is computed and stored automatically
+record = fetch_knot(db, "trefoil")
+record.jones_polynomial  # e.g. "-4:1,-3:1,-1:1"
+----
+
+== Features
+
+**Storage**:: SQLite-backed, WAL mode for concurrent reads. Knots stored as serialised Gauss codes with invariants computed on insert. Schema migrations handled automatically.
+
+**Querying**:: Filter by crossing number, writhe, Gauss hash, name pattern, or metadata key-value pairs. Supports exact values, ranges, sets, and composable predicates with `&` (AND) and `|` (OR).
+
+**Equivalence checking**:: Detect equivalent knot diagrams via cyclic rotation, relabelling, mirroring, and Reidemeister I simplification. Find equivalent or isotopic knots in the database with `find_equivalents` and `find_isotopic`.
+
+**Import/Export**:: Bulk import from CSV or `(name, GaussCode)` tuples. Built-in KnotInfo table (prime knots through 7 crossings) via `import_knotinfo!`. Export to CSV or JSON.
+
+**Deduplication**:: Content-addressed hashing of Gauss codes detects duplicate diagrams stored under different names. The `duplicates` function finds groups of identical entries.
+
+**Jones polynomial**:: Stored as an indexed column. Computed automatically when KnotTheory.jl is loaded, or set manually via the `jones_polynomial` keyword to `store!`.
+
+== Computed invariants
+
+Currently computed on insert (standalone, without KnotTheory.jl):
+
+[cols="1,3"]
+|===
+| Invariant | Description
+
+| `crossing_number`
+| Number of distinct crossings in the diagram
+
+| `writhe`
+| Signed crossing sum (diagram-dependent)
+
+| `gauss_hash`
+| SHA-256 of the Gauss code for deduplication
+|===
+
+With KnotTheory.jl loaded:
+
+[cols="1,3"]
+|===
+| Invariant | Description
+
+| `jones_polynomial`
+| Jones polynomial (stored as "exponent:coefficient" pairs)
+|===
+
+== Equivalence functions
+
+[source,julia]
+----
+# Canonical form (smallest cyclic rotation + relabelling)
+canonical_gauss(g)
+
+# Diagram equivalence (rotation + relabelling)
+is_equivalent(g1, g2)
+
+# Mirror image
+m = mirror(g)
+
+# Amphichirality check (diagram-level)
+is_amphichiral(g)
+
+# Reidemeister I simplification
+simplified = simplify_r1(g)
+
+# Topological equivalence (R1 + rotation + relabelling)
+is_isotopic(g1, g2)
+
+# Database search
+find_equivalents(db, g)   # same diagram
+find_isotopic(db, g)      # same knot type
+----
+
+== Installation
+
+[source,julia]
+----
+using Pkg
+Pkg.add(url="https://gitlab.com/hyperpolymath/Skein.jl")
+----
+
+== Ecosystem
+
+* https://github.com/hyperpolymath/KnotTheory.jl[KnotTheory.jl] — knot theory computation (planar diagrams, invariants, Reidemeister moves)
+* **Skein.jl** (this package) — knot data persistence and querying
+
+== Licence
+
+PMPL-1.0-or-later (Palimpsest-MPL License). See `LICENSE` for details.

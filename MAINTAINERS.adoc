@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+= Maintainers
+
+== Primary Maintainer
+
+* **Jonathan D.A. Jewell** <jonathan.jewell@open.ac.uk>
+** GitHub: https://github.com/hyperpolymath[@hyperpolymath]
+** GitLab: https://gitlab.com/hyperpolymath[@hyperpolymath]
+** Role: Creator, primary maintainer
+
+== Responsibilities
+
+* Reviewing and merging pull requests
+* Triaging issues and security reports
+* Release management and registry submissions
+* Maintaining CI/CD workflows and RSR compliance
+
+== Contact
+
+* **Security issues**: See link:SECURITY.md[SECURITY.md]
+* **General issues**: https://github.com/hyperpolymath/Skein.jl/issues[GitHub Issues]
+* **Email**: jonathan.jewell@open.ac.uk
+
+== Decision Process
+
+Architecture decisions are recorded in `.machine_readable/META.scm` as ADRs.
+Significant changes require maintainer approval before merge.

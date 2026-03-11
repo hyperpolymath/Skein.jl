@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+
+= Skein.jl Roadmap
+:toc:
+
+== v0.1.0 (Complete)
+
+* [x] Core types: `GaussCode`, `KnotRecord`
+* [x] SQLite storage backend with WAL mode
+* [x] Invariant computation: crossing number, writhe, Gauss hash
+* [x] Keyword queries by invariant values
+* [x] Import/export: CSV, JSON, bulk import
+* [x] Deduplication via content-addressed hashing
+* [x] 51 tests passing
+
+== v0.2.0 (Complete)
+
+* [x] KnotTheory.jl package extension (PlanarDiagram to GaussCode bridge)
+* [x] Jones polynomial column with schema migration (v1 -> v2)
+* [x] KnotInfo import (prime knots 0_1 through 7_1)
+* [x] Composable query predicates with `&` (AND) and `|` (OR)
+* [x] Knot equivalence checking (canonical form, cyclic rotation, relabelling)
+* [x] Mirror image and amphichirality detection
+* [x] Reidemeister I simplification
+* [x] `find_equivalents` and `find_isotopic` database searches
+* [x] Property-based tests (invariant consistency, store/fetch round-trip)
+* [x] Benchmark suite
+* [x] Full RSR template structure
+* [x] Julia General registry compatibility (compat bounds for all deps)
+* [x] 493 tests passing
+
+== v0.3.0 (Planned)
+
+* [ ] Julia General registry submission
+* [ ] Reidemeister II simplification (removing two-crossing loops)
+* [ ] Reidemeister III simplification (triangle moves)
+* [ ] Full topological amphichirality detection
+* [ ] Extended KnotInfo table (prime knots through 10+ crossings)
+* [ ] Alexander polynomial (standalone computation)
+* [ ] Bracket polynomial (standalone computation)
+* [ ] KnotTheoryExt integration tests
+* [ ] CSV import test coverage
+* [ ] CI/CD workflows (CodeQL, Scorecard, mirror, hypatia-scan)
+
+== v0.4.0 (Future)
+
+* [ ] Link support (multi-component knots)
+* [ ] Knot atlas web integration (fetch from KnotInfo online)
+* [ ] Spatial graph database extension
+* [ ] PackageCompiler.jl shared library for C FFI
+* [ ] Idris2 ABI formal interface proofs
+* [ ] Zig FFI C-compatible bindings
+* [ ] Performance: connection pooling, prepared statement caching
+* [ ] Knot diagram visualisation (via Makie.jl extension)
+
+== Long-term
+
+* [ ] Distributed knot database (multi-node SQLite replication)
+* [ ] Knot machine learning features (embedding vectors for knot classification)
+* [ ] Integration with computational algebra systems (GAP, Sage)
+* [ ] WASM compilation for browser-based knot explorer
+
+== Future Horizons (v1.0+)
+
+=== Decentralized & Federated Topology
+* [ ] **Federated Skein Protocol**: Enable peer-to-peer searching of knot databases across different research institutions using a shared gossip protocol.
+* [ ] **Content-Addressed Knot Storage**: Full integration with IPFS for permanent, verifiable storage of knot diagrams and their invariants.
+
+=== Topological Machine Learning
+* [ ] **GNN Embedding Index**: Native database support for storing and querying knots by their Graph Neural Network (GNN) embedding vectors, enabling "Fuzzy Topology" searches.
+* [ ] **Automated Invariant Discovery**: Use the database as a training set for finding new, computationally efficient topological invariants.
+
+=== Axiomatic Data Integrity
+* [ ] **Proof-Carrying Records**: Store an Axiom.jl-verified "Proof Certificate" alongside every invariant value to guarantee its mathematical correctness.
+* [ ] **Verified Migration Engine**: Formally prove that schema migrations preserve the topological integrity of Gauss codes.
+
+=== Blockchain & Web3 Integration
+* [ ] **Topological Identity Oracles**: Export knot records and their proofs to smart-contract compatible formats for use in blockchain-based identity systems.
+* [ ] **Skein-on-Chain**: A lightweight verification layer for checking knot invariants directly on EVM or Move-based blockchains.

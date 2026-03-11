@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# RSR-compliant .gitignore
+
+# Julia
+Manifest.toml
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+deps/build.log
+
+# SQLite databases (generated during testing/use)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# OS & Editor
+.DS_Store
+.directory
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Temp
+/tmp/
+*.tmp
+*.bak
+
+# Logs
+*.log
+
+# AI artifacts
+ai-cli-crash-capture/
+sync_report*.txt
+sync_repos_report*.txt
