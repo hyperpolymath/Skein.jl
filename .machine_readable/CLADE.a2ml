@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "60c9c02e-fd17-508f-bdc2-485b719087c5"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "Skein.jl"
+prefixed-name = "fv-Skein.jl"
+
+[clade]
+primary = "fv"
+secondary = []
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/Skein.jl"
+gitlab = "hyperpolymath/Skein.jl"
+bitbucket = "hyperpolymath/Skein.jl"
+
+[lineage]
+type = "standalone"
+parent = "Julia package — Skein hash function"
+born = "2026-03-16"
