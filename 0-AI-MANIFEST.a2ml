@@ -25,8 +25,8 @@
 }
 
 @lifecycle {
-  on-enter: "Read this manifest, then .machine_readable/STATE.scm",
-  on-exit: "Update STATE.scm with session progress"
+  on-enter: "Read this manifest, then `.machine_readable/6a2/STATE.a2ml`",
+  on-exit: "Update .machine_readable/6a2/STATE.a2ml with session progress"
 }
 
 @project-overview {
