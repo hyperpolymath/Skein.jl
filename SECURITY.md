@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
-<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk> -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # Security Policy
 
@@ -9,7 +9,7 @@ If you discover a security vulnerability in Skein.jl, please report it responsib
 
 **Preferred:** Use [GitHub Security Advisories](https://github.com/hyperpolymath/Skein.jl/security/advisories/new)
 
-**Alternative:** Email [jonathan.jewell@open.ac.uk](mailto:jonathan.jewell@open.ac.uk)
+**Alternative:** Email [j.d.a.jewell@open.ac.uk](mailto:j.d.a.jewell@open.ac.uk)
 
 ### What to Include
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <jonathan.jewell@open.ac.uk>
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 = Maintainers
 
 == Primary Maintainer
 
-* **Jonathan D.A. Jewell** <jonathan.jewell@open.ac.uk>
+* **Jonathan D.A. Jewell** <j.d.a.jewell@open.ac.uk>
 ** GitHub: https://github.com/hyperpolymath[@hyperpolymath]
 ** GitLab: https://gitlab.com/hyperpolymath[@hyperpolymath]
 ** Role: Creator, primary maintainer
@@ -21,7 +21,7 @@
 
 * **Security issues**: See link:SECURITY.md[SECURITY.md]
 * **General issues**: https://github.com/hyperpolymath/Skein.jl/issues[GitHub Issues]
-* **Email**: jonathan.jewell@open.ac.uk
+* **Email**: j.d.a.jewell@open.ac.uk
 
 == Decision Process
 
