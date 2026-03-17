@@ -1,0 +1,18 @@
+# ⚓ ANCHOR: Skein.jl
+# This is the canonical authority for the Skein.jl repository.
+
+id: "org.hyperpolymath.Skein.jl"
+version: "1.0.0"
+clade: "unknown"
+status: "active"
+
+# SSG Configuration (Unified boj-server build)
+ssg:
+  engine: "casket"
+  output_dir: "public"
+  boj_trigger: true
+  cartridge: "ssg-mcp"
+
+# Relationships
+parents:
+  - "org.hyperpolymath.boj-server"
