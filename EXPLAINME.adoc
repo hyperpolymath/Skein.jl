@@ -3,42 +3,95 @@
 :toc:
 :icons: font
 
-The README makes claims. This file backs them up.
+The README makes claims. This file backs them up with concrete data structures and critical algorithms.
 
-[quote, README]
+== Claim 1: SQLite-Backed Knot Database with Automatic Invariant Computation
+
+From README:
 ____
-A knot-theoretic database for Julia. Store, index, and query knots by their topological invariants.
+Storage: SQLite-backed, WAL mode for concurrent reads. Knots stored as serialised Gauss codes with invariants computed on insert. Schema migrations handled automatically.
 ____
+
+**How it's proven:**
+- **Core struct**: `GaussCode` type defined in `src/types.jl` (2.5KB)
+- **Record type**: `KnotRecord` struct stores: name, Gauss code, crossing_number, writhe, gauss_hash (SHA-256 content-addressing), jones_polynomial, genus, seifert_circle_count
+- **Database abstraction**: `SkeinDB` exported at line 44; created via `SkeinDB("knots.db")` (README line 32)
+- **Storage operation**: `store!(db, name, gauss_code, metadata=...)` (exported line 47) performs: (1) validates Gauss code, (2) computes invariants in `src/invariants.jl`, (3) inserts into SQLite with schema v3 (auto-migrates if needed), (4) logs to WAL for concurrent reads
+- **Critical path**: `src/storage.jl` (11KB) implements SQLite lifecycle with `_get_schema_version` + `_migrate_vN_to_vM` pattern (handles v1→v2→v3 migrations transparently)
+- **Invariant computation**: `crossing_number`, `writhe`, `gauss_hash` computed standalone in `src/invariants.jl` (9KB); Jones polynomial computed via KnotTheory.jl extension when loaded
+
+**Caveat:** Jones polynomial computation requires KnotTheory.jl (weakdep, optional). Without it, only standalone invariants (crossing, writhe, hash) are computed. Alexander polynomial NOT implemented—would require crossing chirality data not stored in basic Gauss codes.
+
+== Claim 2: Equivalence Checking via Cyclic Rotation, Mirroring, and Reidemeister I Simplification
+
+From README:
+____
+Equivalence checking: Detect equivalent knot diagrams via cyclic rotation, relabelling, mirroring, and Reidemeister I simplification. Find equivalent or isotopic knots in the database with find_equivalents and find_isotopic.
+____
+
+**How it's proven:**
+- **Core functions**: `is_equivalent(g1, g2)` (diagram-level), `is_isotopic(g1, g2)` (topology-level) exported lines 57
+- **Database search**: `find_equivalents(db, g)` and `find_isotopic(db, g)` exported line 59
+- **Rotation invariance**: `canonical_gauss(g)` normalizes to smallest cyclic rotation + relabelling (exported line 58)
+- **Mirror support**: `mirror(g)` computes mirror image; `is_amphichiral(g)` checks if knot equals its mirror (lines 57-58)
+- **Reidemeister simplification**: `simplify_r1(g)` removes crossing pairs; `simplify_r2(g)` simplifies 2-crossing passes; `simplify(g)` applies R1+R2 iteratively (line 57)
+- **Topology equivalence**: `is_isotopic` internally calls `simplify_r1` then checks equivalence (rotation + relabelling only)
+- **Critical path**: `src/invariants.jl` (9KB) implements canonical form computation; `src/polynomials.jl` (8KB) computes Jones polynomial for invariant-based deduplication
+
+**Caveat:** Reidemeister moves beyond R1 and R2 are not implemented. R3 moves (triangle rearrangement) would require more sophisticated crossing tracking. The `is_isotopic` guarantee is therefore sound only for knots distinguishable by R1+R2 simplification plus Jones polynomial.
 
 == Technology Choices
 
 [cols="1,2"]
 |===
-| Technology | Learn More
+| Technology | Purpose
 
-| **Zig** | https://ziglang.org
-| **Julia** | https://julialang.org
-| **Idris2 ABI** | https://www.idris-lang.org
+| **Julia** | Core knot data structures, invariant computation, equivalence checking
+| **SQLite.jl** | Persistent storage with WAL mode; direct cursor iteration (never `collect()` due to SQLite 1.8 finalization issues)
+| **KnotTheory.jl (weakdep)** | Optional: Jones polynomial computation, PlanarDiagram conversion, Reidemeister move extension
+| **SHA.jl** | Content-addressed hashing of Gauss codes for deduplication
 |===
 
 == Dogfooded Across The Account
 
-Uses the hyperpolymath ABI/FFI standard (Idris2 + Zig). Same pattern used across
-https://github.com/hyperpolymath/proven[proven],
-https://github.com/hyperpolymath/burble[burble], and
-https://github.com/hyperpolymath/gossamer[gossamer].
+Skein.jl is the **knowledge base** for knot theory research in the ecosystem:
+- **KnotTheory.jl**: Provides computation engine; Skein provides persistence layer
+- **Cliodynamics.jl**: May use Skein for historical topology mapping (invariant queries)
+- **PostDisciplinary.jl**: Knot records are `LinkedEntity` objects with `kind=:knot`
+
+Same database abstraction pattern (schema versioning, cursor iteration) used in `VeriSimDB`, `Lithoglyph`, and `rrecord-verity`.
 
 == File Map
 
-[cols="1,2"]
+[cols="1,3"]
 |===
 | Path | What's There
 
-| `src/` | Source code
-| `ffi/` | Foreign function interface
-| `test(s)/` | Test suite
+| `src/Skein.jl` | Module entry point (34 lines); exports 28 functions across types, operations, lifecycle, invariant computation, equivalence checking, querying, import/export, polynomial operations
+| `src/types.jl` | Core data structures: `GaussCode(crossings::Vector{Int})`, `KnotRecord` (11 fields: name, code, crossing_number, writhe, gauss_hash, jones_polynomial, genus, seifert_circles, metadata, created_at, updated_at)
+| `src/polynomials.jl` | 8KB Laurent polynomial arithmetic; Kauffman bracket computation; Jones polynomial from bracket; Seifert circle enumeration; genus calculation via Seifert surface
+| `src/invariants.jl` | 9KB standalone invariant computation: `crossing_number(g)` counts distinct crossing indices; `writhe(g)` sums signed crossings; `gauss_hash(g)` SHA-256 of serialized code; equivalence predicates: `is_equivalent`, `is_isotopic`, `is_amphichiral`, `mirror`, `simplify_r1`, `simplify_r2`, `canonical_gauss`
+| `src/storage.jl` | 11KB SQLite backend: `SkeinDB` type with v3 schema; `store!` (auto-computes invariants); `fetch_knot`, `list_knots`, `query` (keyword interface); `update_metadata!` (in-place updates); schema migration via `_get_schema_version` and `_migrate_vN_to_vM` functions; WAL mode for concurrent reads
+| `src/query.jl` | 9KB composable query predicates: `crossing(n)`, `writhe_eq(w)`, `genus_eq(g)`, `meta_eq(key, val)`, `name_like(pattern)` with `&` (AND) and `|` (OR) combinators; `query(db, pred)` returns iterator
+| `src/import_export.jl` | 11KB I/O operations: `import_csv!` (bulk load from CSV); `export_csv`, `export_json` (serialization); `dt_to_gauss` (DT notation conversion); `import_knotinfo!` (KnotInfo table: 36 prime knots through 7 crossings); `bulk_import!` (tuple list ingestion)
+| `ext/KnotTheoryExt.jl` | Package extension (weakdep): adds methods for `store!(db, name, knot::Knot)` and `store!(db, name, pd::PlanarDiagram)`; auto-computes Jones polynomial when KnotTheory loaded
+| `test/runtests.jl` | Main test harness
+| `test/e2e_test.jl` | End-to-end workflow tests: create DB, store knots, query, export, close
+| `test/property_test.jl` | Property-based tests: `is_equivalent` symmetry, `is_isotopic` transitivity, `canonical_gauss` idempotence, mirror involution
 |===
+
+== Critical Invariants (What Must Not Break)
+
+1. **Gauss hash uniqueness**: `gauss_hash(g) == gauss_hash(g')` iff the Gauss codes represent the same diagram (rotation/relabelling applied)
+2. **Equivalence is symmetric**: `is_equivalent(g1, g2) == is_equivalent(g2, g1)`
+3. **Isotopy is transitive**: If `is_isotopic(g1, g2)` and `is_isotopic(g2, g3)`, then `is_isotopic(g1, g3)`
+4. **Canonical form is idempotent**: `canonical_gauss(canonical_gauss(g)) == canonical_gauss(g)`
+5. **Mirror involution**: `mirror(mirror(g)) == g`
+6. **Cursor iteration safety**: Never call `collect()` on SQLite result sets; iterate directly to avoid finalization issues
+7. **Schema persistence**: Schema version must not decrease; migrations are forward-only
 
 == Questions?
 
-Open an issue or reach out directly — happy to explain anything in more detail.
+For curve-by-curve algorithm details, see docstrings in `src/invariants.jl` (polynomial computation) and `src/storage.jl` (SQLite lifecycle).
+For KnotTheory.jl integration, see `ext/KnotTheoryExt.jl` and CLAUDE.md in repo root.
+For practical workflow examples, see README lines 28-57 (standalone), 64-79 (with KnotTheory).
