@@ -843,6 +843,27 @@ using Random
         rm(tmppath)
     end
 
+    @testset "Backfill legacy gauss canonical fields" begin
+        db = SkeinDB(":memory:")
+        store!(db, "legacy_trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
+
+        # Simulate legacy rows with missing v4 fields.
+        Skein.DBInterface.execute(db.conn,
+            "UPDATE knots SET diagram_format = '', canonical_diagram = NULL WHERE name = ?",
+            ["legacy_trefoil"])
+
+        result = backfill_gauss_canonical!(db)
+        @test result.diagram_format_updates == 1
+        @test result.canonical_diagram_updates == 1
+
+        record = fetch_knot(db, "legacy_trefoil")
+        @test record.diagram_format == "gauss"
+        @test !isnothing(record.canonical_diagram)
+        @test record.canonical_diagram == Skein.serialise_gauss(canonical_gauss(record.gauss_code))
+
+        close(db)
+    end
+
     @testset "Duplicate name handling" begin
         db = SkeinDB(":memory:")
         store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]))
@@ -1125,5 +1146,6 @@ using Random
     # CRG Grade C tests
     include("e2e_test.jl")
     include("property_test.jl")
+    include("knot_theory_ext_test.jl")
 
 end

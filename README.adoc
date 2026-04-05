@@ -23,6 +23,8 @@ Named after the https://en.wikipedia.org/wiki/Skein_relation[skein relation] —
 
 Works standalone, or as a persistence layer on top of https://github.com/hyperpolymath/KnotTheory.jl[KnotTheory.jl].
 
+For explicit layer boundaries and interop guarantees, see link:INTEGRATION.adoc[INTEGRATION.adoc].
+
 == Quick start
 
 [source,julia]
@@ -67,16 +69,17 @@ using KnotTheory, Skein
 
 db = SkeinDB("research.db")
 
-# Store KnotTheory Knot types directly
-store!(db, "trefoil", Knot(3, 1))
+# Store KnotTheory Knot/PlanarDiagram directly
+store!(db, "trefoil", trefoil())
 
-# PlanarDiagram types are auto-converted to Gauss codes
-pd = PlanarDiagram(...)
-store!(db, "my-knot", pd)
-
-# Jones polynomial is computed and stored automatically
+# Retrieve KnotTheory values back from Skein records
 record = fetch_knot(db, "trefoil")
-record.jones_polynomial  # e.g. "-4:1,-3:1,-1:1"
+pd = to_planardiagram(record)
+k = to_knot(record)
+
+# Invariants are computed by KnotTheory and cached by Skein
+record.alexander_polynomial
+record.jones_polynomial
 ----
 
 == Features
@@ -119,7 +122,26 @@ With KnotTheory.jl loaded:
 
 | `jones_polynomial`
 | Jones polynomial (stored as "exponent:coefficient" pairs)
+
+| `alexander_polynomial`
+| Alexander polynomial (stored as "exponent:coefficient" pairs)
+
+| `determinant`
+| Knot determinant (integer)
+
+| `signature`
+| Knot signature (integer)
 |===
+
+== Schema maintenance
+
+For databases created before v4 schema fields (`diagram_format`, `canonical_diagram`)
+were introduced, run:
+
+[source,julia]
+----
+result = backfill_gauss_canonical!(db)
+----
 
 == Equivalence functions
 

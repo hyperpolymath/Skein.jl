@@ -46,6 +46,8 @@ export GaussCode, KnotRecord, SkeinDB
 export store!, query, fetch_knot, list_knots
 export update_metadata!, bulk_import!
 export import_csv!, export_csv, export_json, dt_to_gauss
+export backfill_gauss_canonical!
+export to_knot, to_planardiagram
 
 # Database lifecycle
 export close, isopen

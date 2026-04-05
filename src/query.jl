@@ -35,7 +35,12 @@ Query knots by invariant values. Supported keyword arguments:
 - `crossing_number`: Int, UnitRange, or Vector{Int}
 - `writhe`: Int, UnitRange, or Vector{Int}
 - `genus`: Int, UnitRange, or Vector{Int}
+- `determinant`: Int, UnitRange, or Vector{Int}
+- `signature`: Int, UnitRange, or Vector{Int}
 - `gauss_hash`: String (exact match)
+- `alexander_polynomial`: String (exact serialized match)
+- `jones_polynomial`: String (exact serialized match)
+- `diagram_format`: String (e.g. `"gauss"` or `"pd"`)
 - `name_like`: String (SQL LIKE pattern, e.g. "torus%")
 - `meta`: Pair{String,String} — match a metadata key-value pair
 - `limit`: Int (default 100)
@@ -45,7 +50,12 @@ function query(db::SkeinDB;
                crossing_number = nothing,
                writhe = nothing,
                genus = nothing,
+               determinant = nothing,
+               signature = nothing,
                gauss_hash = nothing,
+               alexander_polynomial = nothing,
+               jones_polynomial = nothing,
+               diagram_format = nothing,
                name_like = nothing,
                meta = nothing,
                limit::Int = 100,
@@ -73,9 +83,36 @@ function query(db::SkeinDB;
         append!(params, ps)
     end
 
+    if !isnothing(determinant)
+        cond, ps = build_condition("k.determinant", determinant)
+        push!(conditions, cond)
+        append!(params, ps)
+    end
+
+    if !isnothing(signature)
+        cond, ps = build_condition("k.signature", signature)
+        push!(conditions, cond)
+        append!(params, ps)
+    end
+
     if !isnothing(gauss_hash)
         push!(conditions, "k.gauss_hash = ?")
         push!(params, gauss_hash)
+    end
+
+    if !isnothing(alexander_polynomial)
+        push!(conditions, "k.alexander_polynomial = ?")
+        push!(params, alexander_polynomial)
+    end
+
+    if !isnothing(jones_polynomial)
+        push!(conditions, "k.jones_polynomial = ?")
+        push!(params, jones_polynomial)
+    end
+
+    if !isnothing(diagram_format)
+        push!(conditions, "k.diagram_format = ?")
+        push!(params, diagram_format)
     end
 
     if !isnothing(name_like)

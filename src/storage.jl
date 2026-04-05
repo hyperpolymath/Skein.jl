@@ -6,20 +6,27 @@ SQLite storage backend for Skein.jl
 
 Schema is deliberately simple — one table for knots, one for metadata
 key-value pairs. Invariants are stored as indexed columns for fast
-filtering. The Gauss code itself is stored as a JSON array of integers.
+filtering. Gauss code is retained for fallback ingestion, while PD-native
+serialisation fields enable canonical storage of KnotTheory objects.
 """
 
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 const CREATE_TABLES = """
 CREATE TABLE IF NOT EXISTS knots (
     id              TEXT PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
     gauss_code      TEXT NOT NULL,
+    diagram_format  TEXT NOT NULL DEFAULT 'gauss',
+    canonical_diagram TEXT,
+    pd_code         TEXT,
     crossing_number INTEGER NOT NULL,
     writhe          INTEGER NOT NULL,
     gauss_hash      TEXT NOT NULL,
+    alexander_polynomial TEXT,
     jones_polynomial TEXT,
+    determinant     INTEGER,
+    signature       INTEGER,
     genus           INTEGER,
     seifert_circles INTEGER,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
@@ -42,8 +49,13 @@ CREATE TABLE IF NOT EXISTS schema_info (
 CREATE INDEX IF NOT EXISTS idx_knots_crossing ON knots(crossing_number);
 CREATE INDEX IF NOT EXISTS idx_knots_writhe ON knots(writhe);
 CREATE INDEX IF NOT EXISTS idx_knots_hash ON knots(gauss_hash);
+CREATE INDEX IF NOT EXISTS idx_knots_diagram_format ON knots(diagram_format);
+CREATE INDEX IF NOT EXISTS idx_knots_alexander ON knots(alexander_polynomial);
 CREATE INDEX IF NOT EXISTS idx_knots_jones ON knots(jones_polynomial);
+CREATE INDEX IF NOT EXISTS idx_knots_determinant ON knots(determinant);
+CREATE INDEX IF NOT EXISTS idx_knots_signature ON knots(signature);
 CREATE INDEX IF NOT EXISTS idx_knots_genus ON knots(genus);
+CREATE INDEX IF NOT EXISTS idx_knots_seifert ON knots(seifert_circles);
 CREATE INDEX IF NOT EXISTS idx_metadata_key ON knot_metadata(key);
 """
 
@@ -97,6 +109,9 @@ mutable struct SkeinDB
             if current_version < 3
                 _migrate_v2_to_v3(conn)
             end
+            if current_version < 4
+                _migrate_v3_to_v4(conn)
+            end
 
             # Record schema version
             DBInterface.execute(conn,
@@ -141,6 +156,64 @@ function deserialise_gauss(s::AbstractString)::GaussCode
     GaussCode(crossings)
 end
 
+_db_nullable(value) = value === nothing ? missing : value
+
+function _string_or_nothing(value)
+    if value === nothing || ismissing(value)
+        return nothing
+    end
+    string(value)
+end
+
+function _int_or_nothing(value)
+    if value === nothing || ismissing(value)
+        return nothing
+    end
+    Int(value)
+end
+
+"""
+    backfill_gauss_canonical!(db::SkeinDB) -> NamedTuple
+
+Backfill legacy records that predate PD-aware schema fields:
+- Ensures `diagram_format` is set to `"gauss"` when empty/null.
+- Computes `canonical_diagram` for Gauss-backed rows when missing.
+
+Returns `(diagram_format_updates = Int, canonical_diagram_updates = Int)`.
+"""
+function backfill_gauss_canonical!(db::SkeinDB)
+    db.readonly && error("Database is read-only")
+
+    touched_at = string(Dates.now())
+    fmt_updates = 0
+    canon_updates = 0
+
+    fmt_rows = DBInterface.execute(db.conn,
+        """SELECT id FROM knots
+           WHERE diagram_format IS NULL OR TRIM(diagram_format) = ''""")
+    for row in fmt_rows
+        DBInterface.execute(db.conn,
+            "UPDATE knots SET diagram_format = 'gauss', updated_at = ? WHERE id = ?",
+            [touched_at, string(row[:id])])
+        fmt_updates += 1
+    end
+
+    canon_rows = DBInterface.execute(db.conn,
+        """SELECT id, gauss_code FROM knots
+           WHERE diagram_format = 'gauss'
+             AND (canonical_diagram IS NULL OR TRIM(canonical_diagram) = '')""")
+    for row in canon_rows
+        g = deserialise_gauss(string(row[:gauss_code]))
+        canonical = serialise_gauss(canonical_gauss(g))
+        DBInterface.execute(db.conn,
+            "UPDATE knots SET canonical_diagram = ?, updated_at = ? WHERE id = ?",
+            [canonical, touched_at, string(row[:id])])
+        canon_updates += 1
+    end
+
+    (diagram_format_updates = fmt_updates, canonical_diagram_updates = canon_updates)
+end
+
 # -- Core CRUD --
 
 """
@@ -159,17 +232,53 @@ store!(db, "trefoil", GaussCode([1, -2, 3, -1, 2, -3]),
 # Jones computation is O(2^n), so we cap it to keep store! responsive.
 const MAX_CROSSINGS_FOR_AUTO_JONES = 15
 
+function _store_precomputed!(db::SkeinDB, name::String, g::GaussCode;
+                             metadata::Dict{String, String} = Dict{String, String}(),
+                             diagram_format::String = "gauss",
+                             canonical_diagram::Union{String, Nothing} = nothing,
+                             pd_code::Union{String, Nothing} = nothing,
+                             crossing_number_value::Int = crossing_number(g),
+                             writhe_value::Int = writhe(g),
+                             gauss_hash_value::String = gauss_hash(g),
+                             alexander_polynomial::Union{String, Nothing} = nothing,
+                             jones_polynomial::Union{String, Nothing} = nothing,
+                             determinant::Union{Int, Nothing} = nothing,
+                             signature::Union{Int, Nothing} = nothing,
+                             genus::Union{Int, Nothing} = nothing,
+                             seifert_circle_count::Union{Int, Nothing} = nothing)
+    db.readonly && error("Database is read-only")
+    haskey(db, name) && error("Knot '$name' already exists")
+
+    id = string(uuid4())
+    code_str = serialise_gauss(g)
+    now = string(Dates.now())
+
+    DBInterface.execute(db.conn,
+        """INSERT INTO knots (id, name, gauss_code, diagram_format, canonical_diagram, pd_code,
+           crossing_number, writhe, gauss_hash, alexander_polynomial, jones_polynomial,
+           determinant, signature, genus, seifert_circles, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [id, name, code_str, diagram_format, _db_nullable(canonical_diagram), _db_nullable(pd_code),
+         crossing_number_value, writhe_value, gauss_hash_value,
+         _db_nullable(alexander_polynomial), _db_nullable(jones_polynomial),
+         _db_nullable(determinant), _db_nullable(signature), _db_nullable(genus),
+         _db_nullable(seifert_circle_count), now, now])
+
+    for (k, v) in metadata
+        DBInterface.execute(db.conn,
+            "INSERT INTO knot_metadata (knot_id, key, value) VALUES (?, ?, ?)",
+            [id, k, v])
+    end
+
+    id
+end
+
 function store!(db::SkeinDB, name::String, g::GaussCode;
                 metadata::Dict{String, String} = Dict{String, String}(),
                 jones_polynomial::Union{String, Nothing} = nothing)
-    db.readonly && error("Database is read-only")
-
-    id = string(uuid4())
     cn = crossing_number(g)
     w = writhe(g)
     h = gauss_hash(g)
-    code_str = serialise_gauss(g)
-    now = string(Dates.now())
 
     # Auto-compute Jones polynomial if not provided and crossing count is manageable
     jp = jones_polynomial
@@ -180,22 +289,22 @@ function store!(db::SkeinDB, name::String, g::GaussCode;
     # Compute Seifert circles and genus
     sc = length(seifert_circles(g))
     gen = genus(g)
+    canonical = serialise_gauss(canonical_gauss(g))
 
-    DBInterface.execute(db.conn,
-        """INSERT INTO knots (id, name, gauss_code, crossing_number, writhe, gauss_hash,
-           jones_polynomial, genus, seifert_circles, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        [id, name, code_str, cn, w, h,
-         jp === nothing ? missing : jp,
-         gen, sc, now, now])
-
-    for (k, v) in metadata
-        DBInterface.execute(db.conn,
-            "INSERT INTO knot_metadata (knot_id, key, value) VALUES (?, ?, ?)",
-            [id, k, v])
-    end
-
-    id
+    _store_precomputed!(db, name, g;
+                        metadata = metadata,
+                        diagram_format = "gauss",
+                        canonical_diagram = canonical,
+                        pd_code = nothing,
+                        crossing_number_value = cn,
+                        writhe_value = w,
+                        gauss_hash_value = h,
+                        alexander_polynomial = nothing,
+                        jones_polynomial = jp,
+                        determinant = nothing,
+                        signature = nothing,
+                        genus = gen,
+                        seifert_circle_count = sc)
 end
 
 """
@@ -208,25 +317,7 @@ function fetch_knot(db::SkeinDB, name::String)::Union{KnotRecord, Nothing}
         "SELECT * FROM knots WHERE name = ?", [name])
 
     for row in result
-        id = string(row[:id])
-        meta = fetch_metadata(db, id)
-        jp = ismissing(row[:jones_polynomial]) ? nothing : string(row[:jones_polynomial])
-        gen = ismissing(row[:genus]) ? nothing : Int(row[:genus])
-        sc = ismissing(row[:seifert_circles]) ? nothing : Int(row[:seifert_circles])
-        return KnotRecord(
-            id,
-            string(row[:name]),
-            deserialise_gauss(string(row[:gauss_code])),
-            Int(row[:crossing_number]),
-            Int(row[:writhe]),
-            string(row[:gauss_hash]),
-            jp,
-            gen,
-            sc,
-            meta,
-            DateTime(string(row[:created_at])),
-            DateTime(string(row[:updated_at]))
-        )
+        return row_to_record(db, row)
     end
 
     return nothing
@@ -289,17 +380,29 @@ end
 function row_to_record(db::SkeinDB, row)::KnotRecord
     id = string(row[:id])
     meta = fetch_metadata(db, id)
-    jp = ismissing(row[:jones_polynomial]) ? nothing : string(row[:jones_polynomial])
-    gen = ismissing(row[:genus]) ? nothing : Int(row[:genus])
-    sc = ismissing(row[:seifert_circles]) ? nothing : Int(row[:seifert_circles])
+    diagram_format = string(row[:diagram_format])
+    canonical_diagram = _string_or_nothing(row[:canonical_diagram])
+    pd_code = _string_or_nothing(row[:pd_code])
+    alex = _string_or_nothing(row[:alexander_polynomial])
+    jp = _string_or_nothing(row[:jones_polynomial])
+    det = _int_or_nothing(row[:determinant])
+    sig = _int_or_nothing(row[:signature])
+    gen = _int_or_nothing(row[:genus])
+    sc = _int_or_nothing(row[:seifert_circles])
     KnotRecord(
         id,
         string(row[:name]),
         deserialise_gauss(string(row[:gauss_code])),
+        diagram_format,
+        canonical_diagram,
+        pd_code,
         Int(row[:crossing_number]),
         Int(row[:writhe]),
         string(row[:gauss_hash]),
+        alex,
         jp,
+        det,
+        sig,
         gen,
         sc,
         meta,
@@ -351,4 +454,36 @@ function _migrate_v2_to_v3(conn::SQLite.DB)
         DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN seifert_circles INTEGER")
     end
     DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_genus ON knots(genus)")
+end
+
+function _migrate_v3_to_v4(conn::SQLite.DB)
+    existing_cols = Set{String}()
+    for row in DBInterface.execute(conn, "PRAGMA table_info(knots)")
+        push!(existing_cols, string(row[:name]))
+    end
+
+    if !("diagram_format" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN diagram_format TEXT NOT NULL DEFAULT 'gauss'")
+    end
+    if !("canonical_diagram" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN canonical_diagram TEXT")
+    end
+    if !("pd_code" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN pd_code TEXT")
+    end
+    if !("alexander_polynomial" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN alexander_polynomial TEXT")
+    end
+    if !("determinant" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN determinant INTEGER")
+    end
+    if !("signature" in existing_cols)
+        DBInterface.execute(conn, "ALTER TABLE knots ADD COLUMN signature INTEGER")
+    end
+
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_diagram_format ON knots(diagram_format)")
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_alexander ON knots(alexander_polynomial)")
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_determinant ON knots(determinant)")
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_signature ON knots(signature)")
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS idx_knots_seifert ON knots(seifert_circles)")
 end

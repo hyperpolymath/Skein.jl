@@ -58,8 +58,9 @@ KernelAbstractions = "0.9"
 julia = "1.10"
 
 [extras]
+KnotTheory = "215268c9-7579-426e-8b7c-a3dc27acd339"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random"]
+test = ["Test", "Random", "KnotTheory"]

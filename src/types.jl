@@ -72,10 +72,16 @@ struct KnotRecord
     id::String
     name::String
     gauss_code::GaussCode
+    diagram_format::String
+    canonical_diagram::Union{String, Nothing}
+    pd_code::Union{String, Nothing}
     crossing_number::Int
     writhe::Int
     gauss_hash::String
+    alexander_polynomial::Union{String, Nothing}
     jones_polynomial::Union{String, Nothing}
+    determinant::Union{Int, Nothing}
+    signature::Union{Int, Nothing}
     genus::Union{Int, Nothing}
     seifert_circle_count::Union{Int, Nothing}
     metadata::Dict{String, String}
@@ -86,4 +92,24 @@ end
 function Base.show(io::IO, k::KnotRecord)
     print(io, "KnotRecord(\"", k.name, "\", crossings=", k.crossing_number,
           ", genus=", something(k.genus, "?"), ")")
+end
+
+"""
+    to_planardiagram(record::KnotRecord)
+
+Convert a stored record back into `KnotTheory.PlanarDiagram`.
+Requires KnotTheory.jl to be loaded, which provides the extension method.
+"""
+function to_planardiagram(::Any)
+    error("to_planardiagram requires KnotTheory.jl (load KnotTheory before calling)")
+end
+
+"""
+    to_knot(record::KnotRecord)
+
+Convert a stored record back into `KnotTheory.Knot`.
+Requires KnotTheory.jl to be loaded, which provides the extension method.
+"""
+function to_knot(::Any)
+    error("to_knot requires KnotTheory.jl (load KnotTheory before calling)")
 end

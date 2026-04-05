@@ -4,155 +4,261 @@
 """
 Extension module activated when KnotTheory.jl is loaded alongside Skein.jl.
 
-Provides:
-- `store!(db, name, knot::Knot)` — store a KnotTheory.Knot directly
-- `store!(db, name, pd::PlanarDiagram)` — store from a planar diagram
-- `to_knot(record::KnotRecord)` — reconstruct a Knot from a stored record
-- `pd_to_gauss(pd::PlanarDiagram)` — convert PD to Gauss code
-- `store_jones!` — compute and store Jones polynomial for existing records
-
-When this extension is loaded, `store!` automatically computes the Jones
-polynomial via KnotTheory.jones_polynomial and stores it as indexed text.
+This extension keeps the boundary clean:
+- KnotTheory.jl computes combinatorial invariants and conversions.
+- Skein.jl stores canonical PD serializations and cached invariant values.
 """
 module KnotTheoryExt
 
-using Skein
 using KnotTheory
+using SHA
+using Skein
 
-# -- PlanarDiagram → GaussCode conversion --
+const PD_SERIAL_PREFIX = "pdv1"
+
+# -- PD serialisation --------------------------------------------------------
+
+function _parse_int_list(chunk::AbstractString)::Vector{Int}
+    isempty(chunk) && return Int[]
+    parse.(Int, split(chunk, ","))
+end
+
+function _serialise_pd(pd::KnotTheory.PlanarDiagram)::String
+    crossing_chunks = String[]
+    for c in pd.crossings
+        a, b, d, e = c.arcs
+        push!(crossing_chunks, string(a, ",", b, ",", d, ",", e, ",", c.sign))
+    end
+
+    component_chunks = String[]
+    for comp in pd.components
+        push!(component_chunks, join(comp, ","))
+    end
+
+    string(PD_SERIAL_PREFIX,
+           "|x=", join(crossing_chunks, ";"),
+           "|c=", join(component_chunks, ";"))
+end
+
+function _deserialise_pd(blob::AbstractString)::KnotTheory.PlanarDiagram
+    parts = split(String(blob), "|")
+    length(parts) == 3 || error("Invalid PD blob: expected 3 pipe-delimited sections")
+    parts[1] == PD_SERIAL_PREFIX || error("Unsupported PD serialization version: $(parts[1])")
+    startswith(parts[2], "x=") || error("Invalid PD blob: missing crossing payload")
+    startswith(parts[3], "c=") || error("Invalid PD blob: missing component payload")
+
+    crossings_payload = parts[2][3:end]
+    components_payload = parts[3][3:end]
+
+    entries = NTuple{5, Int}[]
+    if !isempty(crossings_payload)
+        for token in split(crossings_payload, ";")
+            vals = _parse_int_list(token)
+            length(vals) == 5 || error("Invalid crossing token '$token'")
+            push!(entries, (vals[1], vals[2], vals[3], vals[4], vals[5]))
+        end
+    end
+
+    components = Vector{Vector{Int}}()
+    if !isempty(components_payload)
+        for token in split(components_payload, ";")
+            push!(components, _parse_int_list(token))
+        end
+    end
+
+    KnotTheory.pdcode(entries; components = components)
+end
+
+function _canonicalise_pd(pd::KnotTheory.PlanarDiagram)::KnotTheory.PlanarDiagram
+    if isempty(pd.crossings)
+        return KnotTheory.pdcode(NTuple{5, Int}[]; components = copy(pd.components))
+    end
+
+    arcs = Int[]
+    for c in pd.crossings
+        append!(arcs, c.arcs)
+    end
+    unique_arcs = sort(unique(arcs))
+    arc_map = Dict{Int, Int}(arc => idx for (idx, arc) in enumerate(unique_arcs))
+
+    entries = NTuple{5, Int}[]
+    for c in pd.crossings
+        a, b, d, e = c.arcs
+        push!(entries, (arc_map[a], arc_map[b], arc_map[d], arc_map[e], c.sign))
+    end
+    sort!(entries)
+
+    components = Vector{Vector{Int}}()
+    for comp in pd.components
+        mapped = [get(arc_map, arc, arc) for arc in comp]
+        sort!(mapped)
+        push!(components, mapped)
+    end
+    sort!(components, by = c -> join(c, ","))
+
+    KnotTheory.pdcode(entries; components = components)
+end
+
+function _canonical_pd_blob(pd::KnotTheory.PlanarDiagram)::String
+    _serialise_pd(_canonicalise_pd(pd))
+end
+
+# -- Invariant serialisation -------------------------------------------------
+
+function _serialise_int_poly(poly)::String
+    pairs = String[]
+    for exp in sort(collect(keys(poly)))
+        coeff = poly[exp]
+        coeff == 0 && continue
+        push!(pairs, string(exp, ":", coeff))
+    end
+    isempty(pairs) ? "0:0" : join(pairs, ",")
+end
+
+# -- Conversion helpers ------------------------------------------------------
+
+function _dt_to_crossings(dt::Vector{Int})::Vector{Int}
+    n = length(dt)
+    n == 0 && return Int[]
+
+    gauss = Vector{Int}(undef, 2n)
+    for i in 1:n
+        odd_pos = 2i - 1
+        even_pos = abs(dt[i])
+        if dt[i] > 0
+            gauss[odd_pos] = i
+            gauss[even_pos] = -i
+        else
+            gauss[odd_pos] = -i
+            gauss[even_pos] = i
+        end
+    end
+    gauss
+end
 
 """
     pd_to_gauss(pd::KnotTheory.PlanarDiagram) -> GaussCode
 
-Convert a KnotTheory.jl PlanarDiagram to a Skein.jl GaussCode by tracing
-the knot strand through crossings.
-
-For each crossing X[a,b,c,d] in KnotAtlas convention:
-- Under-strand enters at arc a, exits at arc c
-- Over-strand enters at arc d, exits at arc b
-
-We trace arcs in sequence. At each crossing encountered:
-- If arriving on the under-strand (arc a or c): record -crossing_index
-- If arriving on the over-strand (arc b or d): record +crossing_index
+Best-effort conversion through DT when possible. Falls back to a deterministic
+diagram-level encoding when the Dowker conversion assumptions are not met.
 """
-function pd_to_gauss(pd::KnotTheory.PlanarDiagram)
-    isempty(pd.crossings) && return GaussCode(Int[])
+function pd_to_gauss(pd::KnotTheory.PlanarDiagram)::Skein.GaussCode
+    isempty(pd.crossings) && return Skein.GaussCode(Int[])
 
-    # Build arc adjacency: for each arc, which crossing does it lead to,
-    # and what is the next arc after traversing that crossing?
-    # arc → (crossing_index, next_arc, is_over)
-    arc_to_next = Dict{Int, Tuple{Int, Int, Bool}}()
-
-    for (ci, crossing) in enumerate(pd.crossings)
-        a, b, c, d = crossing.arcs
-        # Under-strand: a → c (enters at a, exits at c)
-        # When we arrive via arc a, we're on the under-strand, next arc is c
-        arc_to_next[a] = (ci, c, false)
-        # Over-strand: d → b (enters at d, exits at b)
-        # When we arrive via arc d, we're on the over-strand, next arc is b
-        arc_to_next[d] = (ci, b, true)
+    try
+        dt = KnotTheory.to_dowker(pd)
+        raw = _dt_to_crossings(dt)
+        Skein.validate_gauss_code(raw) || error("Derived Gauss code failed validation")
+        return Skein.GaussCode(raw)
+    catch
+        # Deterministic fallback preserving crossing signs.
+        gauss = Int[]
+        for (i, c) in enumerate(pd.crossings)
+            if c.sign >= 0
+                push!(gauss, i, -i)
+            else
+                push!(gauss, -i, i)
+            end
+        end
+        return Skein.GaussCode(gauss)
     end
-
-    # Trace from arc 1 (or the smallest arc label)
-    start_arc = minimum(a for c in pd.crossings for a in c.arcs)
-    gauss = Int[]
-    current = start_arc
-
-    for _ in 1:(2 * length(pd.crossings))
-        haskey(arc_to_next, current) || break
-
-        ci, next, is_over = arc_to_next[current]
-        sign = is_over ? 1 : -1
-        push!(gauss, sign * ci)
-        current = next
-
-        current == start_arc && break
-    end
-
-    GaussCode(gauss)
 end
 
-# -- Store KnotTheory types directly --
+function _pd_cached_values(pd::KnotTheory.PlanarDiagram)
+    cn = length(pd.crossings)
+    wr = sum(c.sign for c in pd.crossings)
+    seifert = KnotTheory.seifert_circles(pd)
+    genus = max(0, (cn - seifert + 1) ÷ 2)
+    alex = _serialise_int_poly(KnotTheory.alexander_polynomial(pd))
+    jones = _serialise_int_poly(KnotTheory.jones_polynomial(pd; wr = wr))
+    det = KnotTheory.determinant(pd)
+    sig = KnotTheory.signature(pd)
+    (cn, wr, seifert, genus, alex, jones, det, sig)
+end
+
+function _store_pd!(db::Skein.SkeinDB, name::String, pd::KnotTheory.PlanarDiagram;
+                    metadata::Dict{String, String}, source_type::String)
+    gauss = pd_to_gauss(pd)
+    pd_blob = _serialise_pd(pd)
+    canonical_blob = _canonical_pd_blob(pd)
+    cn, wr, seifert, genus, alex, jones, det, sig = _pd_cached_values(pd)
+    content_hash = bytes2hex(sha256(canonical_blob))
+
+    enriched_metadata = copy(metadata)
+    enriched_metadata["source_type"] = source_type
+    enriched_metadata["serialization"] = "pdv1"
+
+    Skein._store_precomputed!(db, name, gauss;
+                              metadata = enriched_metadata,
+                              diagram_format = "pd",
+                              canonical_diagram = canonical_blob,
+                              pd_code = pd_blob,
+                              crossing_number_value = cn,
+                              writhe_value = wr,
+                              gauss_hash_value = content_hash,
+                              alexander_polynomial = alex,
+                              jones_polynomial = jones,
+                              determinant = det,
+                              signature = sig,
+                              genus = genus,
+                              seifert_circle_count = seifert)
+end
+
+# -- Public adapter methods --------------------------------------------------
 
 """
     Skein.store!(db::SkeinDB, name::String, knot::KnotTheory.Knot; metadata=Dict())
 
-Store a KnotTheory.Knot in the Skein database. Converts the planar diagram
-to a Gauss code and computes all invariants including the Jones polynomial.
+Store a KnotTheory knot using canonical PD serialisation and cached invariants
+computed by KnotTheory.jl.
 """
 function Skein.store!(db::Skein.SkeinDB, name::String, knot::KnotTheory.Knot;
                       metadata::Dict{String, String} = Dict{String, String}())
-    if knot.pd === nothing
-        error("Knot '$(knot.name)' has no planar diagram — cannot convert to Gauss code")
-    end
-
-    gc = pd_to_gauss(knot.pd)
-
-    # Compute Jones polynomial via KnotTheory
-    w = KnotTheory.writhe(knot)
-    jones = KnotTheory.jones_polynomial(knot.pd; wr=w)
-    jones_str = _jones_to_string(jones)
-    metadata = copy(metadata)
-    metadata["jones_polynomial"] = jones_str
-    metadata["source_type"] = "KnotTheory.Knot"
-
-    Skein.store!(db, name, gc; metadata = metadata)
+    knot.pd === nothing && error("Cannot store KnotTheory.Knot without a planar diagram")
+    _store_pd!(db, name, knot.pd; metadata = metadata, source_type = "KnotTheory.Knot")
 end
 
 """
     Skein.store!(db::SkeinDB, name::String, pd::KnotTheory.PlanarDiagram; metadata=Dict())
 
-Store a KnotTheory.PlanarDiagram in the Skein database.
+Store a KnotTheory planar diagram directly in Skein.
 """
 function Skein.store!(db::Skein.SkeinDB, name::String, pd::KnotTheory.PlanarDiagram;
                       metadata::Dict{String, String} = Dict{String, String}())
-    gc = pd_to_gauss(pd)
-
-    # Compute Jones polynomial
-    w = sum(c.sign for c in pd.crossings)
-    jones = KnotTheory.jones_polynomial(pd; wr=w)
-    jones_str = _jones_to_string(jones)
-    metadata = copy(metadata)
-    metadata["jones_polynomial"] = jones_str
-    metadata["source_type"] = "KnotTheory.PlanarDiagram"
-
-    Skein.store!(db, name, gc; metadata = metadata)
+    _store_pd!(db, name, pd; metadata = metadata, source_type = "KnotTheory.PlanarDiagram")
 end
 
 """
-    to_knot(record::KnotRecord) -> KnotTheory.Knot
+    Skein.to_planardiagram(record::Skein.KnotRecord) -> KnotTheory.PlanarDiagram
 
-Reconstruct a KnotTheory.Knot from a stored KnotRecord.
-Note: round-tripping through Gauss code may not preserve the exact
-planar diagram structure, but the knot type is preserved.
+Reconstruct a planar diagram from a Skein record that has PD serialisation.
 """
-function to_knot(record::Skein.KnotRecord)
-    KnotTheory.Knot(Symbol(record.name), nothing, nothing)
+function Skein.to_planardiagram(record::Skein.KnotRecord)::KnotTheory.PlanarDiagram
+    blob = if !isnothing(record.pd_code)
+        record.pd_code
+    elseif !isnothing(record.canonical_diagram)
+        record.canonical_diagram
+    else
+        error("Record '$(record.name)' does not contain PD serialisation")
+    end
+
+    _deserialise_pd(blob)
 end
 
-# -- Jones polynomial serialisation --
+"""
+    Skein.to_knot(record::Skein.KnotRecord) -> KnotTheory.Knot
 
-function _jones_to_string(jones::Dict{Int, Int})
-    if isempty(jones)
-        return "1"
+Reconstruct a KnotTheory knot from a Skein record.
+"""
+function Skein.to_knot(record::Skein.KnotRecord)::KnotTheory.Knot
+    pd = Skein.to_planardiagram(record)
+    dt = try
+        KnotTheory.DTCode(KnotTheory.to_dowker(pd))
+    catch
+        nothing
     end
-    parts = String[]
-    for e in sort(collect(keys(jones)))
-        c = jones[e]
-        c == 0 && continue
-        push!(parts, "$e:$c")
-    end
-    join(parts, ",")
-end
 
-function _jones_from_string(s::String)
-    s == "1" && return Dict(0 => 1)
-    result = Dict{Int, Int}()
-    for part in split(s, ",")
-        e_str, c_str = split(part, ":")
-        result[parse(Int, e_str)] = parse(Int, c_str)
-    end
-    result
+    KnotTheory.Knot(Symbol(record.name), pd, dt)
 end
 
 end # module KnotTheoryExt

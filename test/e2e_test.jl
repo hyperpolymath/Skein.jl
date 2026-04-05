@@ -54,13 +54,12 @@ using Skein
         @test gauss_hash(g) isa String
     end
 
-    @testset "Error handling: duplicate store returns consistent id" begin
+    @testset "Error handling: duplicate store throws" begin
         db = SkeinDB(":memory:")
         trefoil = GaussCode([1, -2, 3, -1, 2, -3])
         id1 = store!(db, "trefoil_dup", trefoil)
-        id2 = store!(db, "trefoil_dup", trefoil)
         @test id1 isa String
-        @test id2 isa String
+        @test_throws Exception store!(db, "trefoil_dup", trefoil)
         close(db)
     end
 

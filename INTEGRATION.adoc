@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= Skein Integration Contract
+:toc:
+
+This document defines the intended boundary between layers in the knot stack:
+
+* `KnotTheory.jl`: combinatorial representation + invariant engine
+* `Skein.jl`: persistence, indexing, query, and cached-results storage
+* `QuandleDB` (or other semantic layers): semantic indexing/equivalence workflows
+
+== Responsibilities
+
+=== KnotTheory.jl (engine)
+
+* Owns core representations (`PlanarDiagram`, `Knot`, `DTCode`).
+* Owns invariant algorithms (`alexander_polynomial`, `jones_polynomial`, `determinant`, `signature`, etc.).
+* Must not include persistence/database policy.
+
+=== Skein.jl (storage/query/cache)
+
+* Owns durable storage schema and migrations.
+* Owns query/index APIs.
+* Caches invariant outputs produced by KnotTheory.
+* Must not duplicate heavy invariant implementations from KnotTheory.
+
+=== Semantic layers (e.g. QuandleDB)
+
+* Read Skein records.
+* Build semantic descriptors/equivalence indexes.
+* Store semantic index artifacts in their own layer-specific tables/stores.
+* Treat Skein as the source of canonical diagram payload + invariant cache.
+
+== Canonical Payloads in Skein
+
+Skein stores two diagram payload forms:
+
+* `gauss_code`: fallback ingestion/storage form
+* `pd_code` (`pdv1`): PD-first serialization for KnotTheory objects
+
+Supporting columns:
+
+* `diagram_format`: `"gauss"` or `"pd"`
+* `canonical_diagram`: canonicalized form used for stable hashing/indexing
+
+`gauss_hash` is a content hash key for dedupe/indexing. For PD-ingested entries it is
+derived from the canonical PD blob.
+
+== Public Interop API
+
+When `KnotTheory.jl` is loaded, Skein provides:
+
+[source,julia]
+----
+store!(db, name, knot::KnotTheory.Knot)
+store!(db, name, pd::KnotTheory.PlanarDiagram)
+
+to_planardiagram(record::KnotRecord) -> KnotTheory.PlanarDiagram
+to_knot(record::KnotRecord) -> KnotTheory.Knot
+----
+
+Gauss fallback remains available:
+
+[source,julia]
+----
+store!(db, name, gauss::GaussCode)
+----
+
+== Backfill for Legacy Databases
+
+For databases created before PD-aware fields were introduced, run:
+
+[source,julia]
+----
+result = backfill_gauss_canonical!(db)
+# (diagram_format_updates = ..., canonical_diagram_updates = ...)
+----
+
+This fills missing `diagram_format` and `canonical_diagram` for legacy Gauss rows.
+
+== Query Contract
+
+Skein guarantees indexed querying over at least:
+
+* `crossing_number`, `writhe`, `genus`
+* `jones_polynomial`, `alexander_polynomial`
+* `determinant`, `signature`
+* `diagram_format`, `gauss_hash`
+
+Semantic layers should compose on top of this contract rather than re-implement
+raw diagram persistence logic.
