@@ -1146,6 +1146,7 @@ using Random
     # CRG Grade C tests
     include("e2e_test.jl")
     include("property_test.jl")
+    include("canonical_gauss_test.jl")
     include("knot_theory_ext_test.jl")
 
 end
