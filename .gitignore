@@ -2,7 +2,7 @@
 # RSR-compliant .gitignore
 
 # Julia
-Manifest.toml
+# Manifest.toml is committed for reproducibility (research artifact)
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
