@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Skein.jl — Source Directory
+:toc:
+
+== Overview
+
+This directory contains the full Julia implementation of the `Skein` module:
+a knot-theoretic SQLite-backed database with standalone invariant computation.
+`Skein.jl` can be used without `KnotTheory.jl`; when that package is also
+loaded, richer invariants and PD-diagram storage become available via an
+extension module.
+
+== Files
+
+[cols="1,3"]
+|===
+| File | Purpose
+
+| `Skein.jl`
+| Top-level module file. Declares all exports, `include`s the implementation
+  files below, and wires the optional `KnotTheory` extension.
+
+| `types.jl`
+| Core data model: `GaussCode` (the fundamental representation — a signed
+  integer sequence where `\|i\|` identifies a crossing and `sign(i)` is
+  over/under), `KnotRecord` (a database row), `SkeinDB` (the SQLite wrapper).
+  Input validation is enforced in the `GaussCode` constructor.
+
+| `storage.jl`
+| SQLite storage backend. Schema version 4: a `knots` table with indexed
+  invariant columns plus a `metadata` key-value table. Includes
+  `store!`, `fetch_knot`, `list_knots`, `update_metadata!`, `bulk_import!`,
+  `backfill_gauss_canonical!`.
+
+| `query.jl`
+| Predicate-based query interface over invariant columns. Supports exact
+  values, integer ranges, and multi-constraint composition. Returns
+  `Vector{KnotRecord}`.
+
+| `invariants.jl`
+| Standalone invariant computation directly from `GaussCode` without
+  `KnotTheory.jl`: `crossing_number` (diagram count), `writhe` (algebraic
+  sum of signs), `gauss_hash` (SHA-256 of the canonical Gauss sequence
+  for deduplication). All dispatch through `backend_invariant_compute`.
+
+| `polynomials.jl`
+| Standalone Kauffman bracket and Jones polynomial from Gauss codes.
+  Laurent polynomials are represented as `Dict{Int,Int}` (exponent → coefficient).
+  Dispatches through `backend_polynomial_eval`; the Julia fallback is
+  complete and correct for small diagrams.
+
+| `import_export.jl`
+| Bulk I/O: `import_csv!` (KnotInfo-style CSV), `export_csv`, `export_json`,
+  `dt_to_gauss` (DT-code to Gauss conversion for bulk imports), `bulk_import!`.
+
+| `backends/`
+| Coprocessor-dispatch glue. See `backends/README.adoc`.
+
+| `abi/`
+| Formal ABI specifications (Idris2) and FFI stubs. See `abi/README.adoc`.
+|===
+
+== Invariant-column index
+
+The SQLite `knots` table carries these indexed columns:
+
+[cols="1,1,2"]
+|===
+| Column | Type | Notes
+
+| `crossing_number` | INTEGER | Diagram count (not minimal); indexed for range queries
+| `writhe` | INTEGER | Algebraic crossing sum; distinguishes chirality
+| `diagram_format` | TEXT | `"gauss"`, `"pd"`, or `"dt"` — format of stored code
+| `schema_version` | INTEGER | Updated by migration on open
+|===
+
+== Extension API (with KnotTheory.jl)
+
+When `KnotTheory.jl` is also loaded, Skein extends the following:
+
+- `store!(db, name, pd::PlanarDiagram)` — stores PD codes natively
+- `fetch_knot` returns a `PlanarDiagram` instead of a `GaussCode`
+- `to_knot` / `to_planardiagram` for round-tripping between packages
+
+This is wired through a Julia package extension (`ext/SkeinKnotTheoryExt.jl`
+in the parent repo). Do not implement KnotTheory-specific logic inside `src/`.

@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Skein.jl — ABI Specification (Idris2)
+:toc:
+
+== Purpose
+
+Formal ABI definitions for the C-compatible FFI layer that exposes Skein
+to non-Julia callers. Written in Idris2 with dependent types, so that
+memory layout, ownership semantics, and function preconditions are
+checked at compile time rather than discovered at runtime.
+
+This is the *source of truth* for the Zig FFI implementation. If the
+Idris2 types disagree with the Zig code, the Zig code is wrong.
+
+== Files
+
+[cols="1,3"]
+|===
+| File | Purpose
+
+| `Types.idr`
+| Fundamental data model: `CrossingIndex`, `SignedCrossing`, `GaussCode`
+  (length-indexed vector of signed crossings), `KnotId` (fixed-width
+  string handle). Dependent types enforce length consistency at the type
+  level.
+
+| `Layout.idr`
+| C-compatible struct layouts for `GaussCode` (length + flexible array
+  member) and `KnotRecord` (id/name/gauss buffer offsets). Size and
+  alignment proofs guarantee the Zig `extern struct` matches these specs.
+  Imports `Types`.
+
+| `Foreign.idr`
+| FFI function declarations with preconditions, postconditions, and
+  ownership annotations. Covers the full CRUD surface:
+  `skein_open`, `skein_close`, `skein_store`, `skein_fetch`,
+  `skein_query`, `skein_delete`.
+  `SkeinDBHandle` is an opaque `AnyPtr`; `SkeinError` is a 7-variant
+  discriminated union matching the Zig enum. Imports both `Types` and `Layout`.
+|===
+
+== Ownership rules
+
+All ownership is explicit in the Idris2 comments and must be mirrored in Zig:
+
+- `skein_open` returns a heap-allocated handle; caller must call `skein_close`.
+- `skein_fetch` returns a heap-allocated `KnotRecord`; caller must call `skein_free_record`.
+- `skein_query` returns a heap-allocated array; caller must call `skein_free_results`.
+- All other functions borrow their arguments.
+
+== Relationship to the Zig FFI
+
+The Zig implementation lives under `ffi/zig/` at the repo root. The
+generated C header (`generated/abi/skein.h`) is produced from this Idris2
+specification. Do not hand-edit the header — regenerate from Idris2.
+
+== Relationship to KRLAdapter.jl
+
+`KRLAdapter.jl` uses the Zig FFI (via the C header) to expose Skein
+operations to the KRL query planner. The ABI types here are the shared
+contract between Skein and KRLAdapter.
