@@ -12,37 +12,6 @@ SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
-[weakdeps]
-AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-CryptoAccel = "99999999-9999-9999-9999-999999999999"
-DSPLibs = "33333333-3333-3333-3333-333333333333"
-FPGASynthesis = "44444444-4444-4444-4444-444444444444"
-KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-KnotTheory = "215268c9-7579-426e-8b7c-a3dc27acd339"
-MathAccel = "88888888-8888-8888-8888-888888888888"
-Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
-NPUAccel = "22222222-2222-2222-2222-222222222222"
-PPUCompute = "77777777-7777-7777-7777-777777777777"
-QPUInterface = "66666666-6666-6666-6666-666666666666"
-TPUCompute = "11111111-1111-1111-1111-111111111111"
-VPURuntime = "55555555-5555-5555-5555-555555555555"
-
-[extensions]
-KnotTheoryExt = "KnotTheory"
-SkeinCUDAExt = ["CUDA", "KernelAbstractions"]
-SkeinMetalExt = ["Metal", "KernelAbstractions"]
-SkeinROCmExt = ["AMDGPU", "KernelAbstractions"]
-SkeinTPUExt = "TPUCompute"
-SkeinNPUExt = "NPUAccel"
-SkeinDSPExt = "DSPLibs"
-SkeinFPGAExt = "FPGASynthesis"
-SkeinVPUExt = "VPURuntime"
-SkeinQPUExt = "QPUInterface"
-SkeinPPUExt = "PPUCompute"
-SkeinMathExt = "MathAccel"
-SkeinCryptoExt = "CryptoAccel"
-
 [compat]
 AcceleratorGate = "0.1"
 DBInterface = "2"
@@ -56,6 +25,19 @@ Metal = "1"
 AMDGPU = "1"
 KernelAbstractions = "0.9"
 julia = "1.10"
+
+[weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+KnotTheory = "215268c9-7579-426e-8b7c-a3dc27acd339"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+
+[extensions]
+KnotTheoryExt = "KnotTheory"
+SkeinCUDAExt = ["CUDA", "KernelAbstractions"]
+SkeinMetalExt = ["Metal", "KernelAbstractions"]
+SkeinROCmExt = ["AMDGPU", "KernelAbstractions"]
 
 [extras]
 KnotTheory = "215268c9-7579-426e-8b7c-a3dc27acd339"
