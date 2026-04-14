@@ -3,6 +3,8 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 # List all available recipes
+import? "contractile.just"
+
 default:
     @just --list
 
