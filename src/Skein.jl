@@ -68,12 +68,16 @@ export serialise_laurent, deserialise_laurent
 # Composable query predicates
 export QueryPredicate, crossing, writhe_eq, genus_eq, meta_eq, name_like
 
+# Prime knot table (hardcoded through 7 crossings)
+export prime_knot, prime_knots
+
 include("types.jl")
 include("polynomials.jl")
 include("invariants.jl")
 include("storage.jl")
 include("query.jl")
 include("import_export.jl")
+include("knot_table.jl")
 include("backends/abstract.jl")
 
 end # module Skein
