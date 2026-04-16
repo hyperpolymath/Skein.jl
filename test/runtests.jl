@@ -1143,6 +1143,94 @@ using Random
         @test is_equivalent(g1, g1)
     end
 
+    @testset "Prime knot table" begin
+        # Table has all 15 prime knots through 7 crossings
+        all = prime_knots()
+        @test length(all) == 15
+
+        # Distribution by crossing number
+        @test length(prime_knots(0)) == 1   # unknot
+        @test length(prime_knots(3)) == 1   # 3_1
+        @test length(prime_knots(4)) == 1   # 4_1
+        @test length(prime_knots(5)) == 2   # 5_1, 5_2
+        @test length(prime_knots(6)) == 3   # 6_1, 6_2, 6_3
+        @test length(prime_knots(7)) == 7   # 7_1 through 7_7
+
+        # No knots with 1, 2, or 8+ crossings in the table
+        @test isempty(prime_knots(1))
+        @test isempty(prime_knots(2))
+        @test isempty(prime_knots(8))
+
+        # Lookup by name
+        trefoil = prime_knot("3_1")
+        @test trefoil.name == "3_1"
+        @test trefoil.crossing_number == 3
+        @test trefoil.genus == 1
+        @test trefoil.seifert_circle_count == 2
+        @test trefoil.metadata["type"] == "torus"
+        @test trefoil.metadata["alternating"] == "true"
+        @test length(trefoil.jones_polynomial) > 0
+        @test trefoil.gauss_code isa GaussCode
+        @test crossing_number(trefoil.gauss_code) == 3
+        @test trefoil.dt_notation == [4, 6, 2]
+
+        # Unknot
+        unknot = prime_knot("0_1")
+        @test unknot.crossing_number == 0
+        @test unknot.genus == 0
+        @test unknot.gauss_code == GaussCode(Int[])
+
+        # Figure-eight
+        fig8 = prime_knot("4_1")
+        @test fig8.crossing_number == 4
+        @test fig8.genus == 1
+        @test fig8.metadata["alias"] == "figure-eight"
+
+        # 7-crossing knots all have correct crossing number
+        for k in prime_knots(7)
+            @test k.crossing_number == 7
+            @test crossing_number(k.gauss_code) == 7
+            @test k.genus >= 1
+            @test k.seifert_circle_count >= 1
+            @test length(k.jones_polynomial) > 0
+        end
+
+        # Torus knots have family metadata
+        @test prime_knot("5_1").metadata["family"] == "(2,5)-torus"
+        @test prime_knot("7_1").metadata["family"] == "(2,7)-torus"
+
+        # Jones polynomials are valid serialised Laurent polynomials
+        for k in all
+            p = deserialise_laurent(k.jones_polynomial)
+            @test p isa LaurentPoly
+        end
+
+        # Each knot has a unique Jones polynomial (distinguishes all primes through 7)
+        jones_set = Set(k.jones_polynomial for k in all)
+        @test length(jones_set) == length(all)
+
+        # Gauss codes match what DT conversion produces
+        for k in all
+            gc_from_dt = dt_to_gauss(k.dt_notation)
+            @test k.gauss_code == gc_from_dt
+        end
+
+        # KeyError for unknown knot
+        @test_throws KeyError prime_knot("99_1")
+
+        # Table data is consistent with database import
+        db = SkeinDB(":memory:")
+        import_knotinfo!(db)
+        for k in all
+            record = fetch_knot(db, k.name)
+            @test !isnothing(record)
+            @test record.crossing_number == k.crossing_number
+            @test record.genus == k.genus
+            @test record.jones_polynomial == k.jones_polynomial
+        end
+        close(db)
+    end
+
     # CRG Grade C tests
     include("e2e_test.jl")
     include("property_test.jl")
