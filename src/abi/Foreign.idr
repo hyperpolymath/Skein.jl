@@ -1,120 +1,217 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
--- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-
-||| Foreign function interface declarations for Skein.jl.
+||| SPDX-License-Identifier: PMPL-1.0-or-later
+||| Foreign Function Interface Declarations for SKEIN.JL
 |||
-||| Specifies the C-compatible function signatures that the Zig FFI
-||| must implement. Each declaration carries type-level documentation
-||| of preconditions, postconditions, and ownership semantics.
-module Foreign
+||| This module declares all C-compatible functions that will be
+||| implemented in the Zig FFI layer.
+|||
+||| All functions are declared here with type signatures and safety proofs.
+||| Implementations live in ffi/zig/
 
-import Types
-import Layout
+module Skein.jl.ABI.Foreign
+
+import Skein.jl.ABI.Types
+import Skein.jl.ABI.Layout
 
 %default total
 
-||| Database handle (opaque pointer).
+--------------------------------------------------------------------------------
+-- Library Lifecycle
+--------------------------------------------------------------------------------
+
+||| Initialize the library
+||| Returns a handle to the library instance, or Nothing on failure
+export
+%foreign "C:Skein.jl_init, libSkein.jl"
+prim__init : PrimIO Bits64
+
+||| Safe wrapper for library initialization
+export
+init : IO (Maybe Handle)
+init = do
+  ptr <- primIO prim__init
+  pure (createHandle ptr)
+
+||| Clean up library resources
+export
+%foreign "C:Skein.jl_free, libSkein.jl"
+prim__free : Bits64 -> PrimIO ()
+
+||| Safe wrapper for cleanup
+export
+free : Handle -> IO ()
+free h = primIO (prim__free (handlePtr h))
+
+--------------------------------------------------------------------------------
+-- Core Operations
+--------------------------------------------------------------------------------
+
+||| Example operation: process data
+export
+%foreign "C:Skein.jl_process, libSkein.jl"
+prim__process : Bits64 -> Bits32 -> PrimIO Bits32
+
+||| Safe wrapper with error handling
+export
+process : Handle -> Bits32 -> IO (Either Result Bits32)
+process h input = do
+  result <- primIO (prim__process (handlePtr h) input)
+  pure $ case result of
+    0 => Left Error
+    n => Right n
+
+--------------------------------------------------------------------------------
+-- String Operations
+--------------------------------------------------------------------------------
+
+||| Convert C string to Idris String
+export
+%foreign "support:idris2_getString, libidris2_support"
+prim__getString : Bits64 -> String
+
+||| Free C string
+export
+%foreign "C:Skein.jl_free_string, libSkein.jl"
+prim__freeString : Bits64 -> PrimIO ()
+
+||| Get string result from library
+export
+%foreign "C:Skein.jl_get_string, libSkein.jl"
+prim__getResult : Bits64 -> PrimIO Bits64
+
+||| Safe string getter
+export
+getString : Handle -> IO (Maybe String)
+getString h = do
+  ptr <- primIO (prim__getResult (handlePtr h))
+  if ptr == 0
+    then pure Nothing
+    else do
+      let str = prim__getString ptr
+      primIO (prim__freeString ptr)
+      pure (Just str)
+
+--------------------------------------------------------------------------------
+-- Array/Buffer Operations
+--------------------------------------------------------------------------------
+
+||| Process array data
+export
+%foreign "C:Skein.jl_process_array, libSkein.jl"
+prim__processArray : Bits64 -> Bits64 -> Bits32 -> PrimIO Bits32
+
+||| Safe array processor
+export
+processArray : Handle -> (buffer : Bits64) -> (len : Bits32) -> IO (Either Result ())
+processArray h buf len = do
+  result <- primIO (prim__processArray (handlePtr h) buf len)
+  pure $ case resultFromInt result of
+    Just Ok => Right ()
+    Just err => Left err
+    Nothing => Left Error
+  where
+    resultFromInt : Bits32 -> Maybe Result
+    resultFromInt 0 = Just Ok
+    resultFromInt 1 = Just Error
+    resultFromInt 2 = Just InvalidParam
+    resultFromInt 3 = Just OutOfMemory
+    resultFromInt 4 = Just NullPointer
+    resultFromInt _ = Nothing
+
+--------------------------------------------------------------------------------
+-- Error Handling
+--------------------------------------------------------------------------------
+
+||| Get last error message
+export
+%foreign "C:Skein.jl_last_error, libSkein.jl"
+prim__lastError : PrimIO Bits64
+
+||| Retrieve last error as string
+export
+lastError : IO (Maybe String)
+lastError = do
+  ptr <- primIO prim__lastError
+  if ptr == 0
+    then pure Nothing
+    else pure (Just (prim__getString ptr))
+
+||| Get error description for result code
+export
+errorDescription : Result -> String
+errorDescription Ok = "Success"
+errorDescription Error = "Generic error"
+errorDescription InvalidParam = "Invalid parameter"
+errorDescription OutOfMemory = "Out of memory"
+errorDescription NullPointer = "Null pointer"
+
+--------------------------------------------------------------------------------
+-- Version Information
+--------------------------------------------------------------------------------
+
+||| Get library version
+export
+%foreign "C:Skein.jl_version, libSkein.jl"
+prim__version : PrimIO Bits64
+
+||| Get version as string
+export
+version : IO String
+version = do
+  ptr <- primIO prim__version
+  pure (prim__getString ptr)
+
+||| Get library build info
+export
+%foreign "C:Skein.jl_build_info, libSkein.jl"
+prim__buildInfo : PrimIO Bits64
+
+||| Get build information
+export
+buildInfo : IO String
+buildInfo = do
+  ptr <- primIO prim__buildInfo
+  pure (prim__getString ptr)
+
+--------------------------------------------------------------------------------
+-- Callback Support
+--------------------------------------------------------------------------------
+
+||| Callback function type (C ABI)
 public export
-SkeinDBHandle : Type
-SkeinDBHandle = AnyPtr
+Callback : Type
+Callback = Bits64 -> Bits32 -> Bits32
 
-||| Error codes returned by FFI functions.
-public export
-data SkeinError
-  = SkeinOk           -- 0: success
-  | SkeinErrOpen      -- 1: failed to open database
-  | SkeinErrQuery     -- 2: query execution failed
-  | SkeinErrNotFound  -- 3: knot not found
-  | SkeinErrDuplicate -- 4: name already exists
-  | SkeinErrReadOnly  -- 5: database is read-only
-  | SkeinErrInvalid   -- 6: invalid input data
-
-||| FFI function: Open or create a Skein database.
-|||
-||| @param path Null-terminated path string. Use ":memory:" for in-memory.
-||| @param readonly 0 for read-write, 1 for read-only.
-||| @return Database handle (caller owns), or NULL on failure.
-|||
-||| Postcondition: returned handle must be closed with skein_close.
+||| Register a callback
 export
-skein_open : (path : String) -> (readonly : Int) -> IO SkeinDBHandle
+%foreign "C:Skein.jl_register_callback, libSkein.jl"
+prim__registerCallback : Bits64 -> AnyPtr -> PrimIO Bits32
 
-||| FFI function: Close a database handle.
-|||
-||| @param db Valid database handle (ownership transferred to callee).
-||| Postcondition: handle is invalidated; further use is undefined behaviour.
+||| Safe callback registration
 export
-skein_close : (db : SkeinDBHandle) -> IO ()
+registerCallback : Handle -> Callback -> IO (Either Result ())
+registerCallback h cb = do
+  result <- primIO (prim__registerCallback (handlePtr h) (cast cb))
+  pure $ case resultFromInt result of
+    Just Ok => Right ()
+    Just err => Left err
+    Nothing => Left Error
+  where
+    resultFromInt : Bits32 -> Maybe Result
+    resultFromInt 0 = Just Ok
+    resultFromInt _ = Just Error
 
-||| FFI function: Store a knot.
-|||
-||| @param db Valid database handle (borrowed).
-||| @param name Null-terminated name string (borrowed).
-||| @param crossings Pointer to signed crossing array (borrowed).
-||| @param length Number of entries in crossings array.
-||| @return Error code.
-|||
-||| Precondition: crossings has exactly `length` int32 elements.
-||| Precondition: each crossing index appears exactly twice with opposite signs.
-export
-skein_store : (db : SkeinDBHandle)
-           -> (name : String)
-           -> (crossings : AnyPtr)
-           -> (length : Int)
-           -> IO Int  -- SkeinError
+--------------------------------------------------------------------------------
+-- Utility Functions
+--------------------------------------------------------------------------------
 
-||| FFI function: Fetch a knot by name.
-|||
-||| @param db Valid database handle (borrowed).
-||| @param name Null-terminated name string (borrowed).
-||| @param result Pointer to output struct (caller-allocated).
-||| @return Error code.
-|||
-||| Postcondition: on success, result is populated with knot data.
-||| The name string in result is allocated and must be freed by caller.
+||| Check if library is initialized
 export
-skein_fetch : (db : SkeinDBHandle)
-           -> (name : String)
-           -> (result : AnyPtr)
-           -> IO Int  -- SkeinError
+%foreign "C:Skein.jl_is_initialized, libSkein.jl"
+prim__isInitialized : Bits64 -> PrimIO Bits32
 
-||| FFI function: Count knots in database.
-|||
-||| @param db Valid database handle (borrowed).
-||| @return Number of knots, or -1 on error.
+||| Check initialization status
 export
-skein_count : (db : SkeinDBHandle) -> IO Int
-
-||| FFI function: Check if a knot exists.
-|||
-||| @param db Valid database handle (borrowed).
-||| @param name Null-terminated name string (borrowed).
-||| @return 1 if exists, 0 if not, -1 on error.
-export
-skein_haskey : (db : SkeinDBHandle) -> (name : String) -> IO Int
-
-||| FFI function: Delete a knot by name.
-|||
-||| @param db Valid database handle (borrowed).
-||| @param name Null-terminated name string (borrowed).
-||| @return Error code.
-export
-skein_delete : (db : SkeinDBHandle) -> (name : String) -> IO Int  -- SkeinError
-
-||| FFI function: Compute crossing number from raw Gauss code.
-|||
-||| @param crossings Pointer to signed crossing array (borrowed).
-||| @param length Number of entries.
-||| @return Crossing number (non-negative), or -1 on error.
-|||
-||| Pure function: no side effects, no database required.
-export
-skein_crossing_number : (crossings : AnyPtr) -> (length : Int) -> IO Int
-
-||| FFI function: Compute writhe from raw Gauss code.
-|||
-||| @param crossings Pointer to signed crossing array (borrowed).
-||| @param length Number of entries.
-||| @return Writhe value, or MIN_INT on error.
-export
-skein_writhe : (crossings : AnyPtr) -> (length : Int) -> IO Int
+isInitialized : Handle -> IO Bool
+isInitialized h = do
+  result <- primIO (prim__isInitialized (handlePtr h))
+  pure (result /= 0)

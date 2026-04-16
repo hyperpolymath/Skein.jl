@@ -1,195 +1,274 @@
+// SKEIN.JL FFI Implementation
+//
+// This module implements the C-compatible FFI declared in src/abi/Foreign.idr
+// All types and layouts must match the Idris2 ABI definitions.
+//
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-
-//! Skein FFI — C-compatible bindings for the Skein knot database.
-//!
-//! This module implements the foreign function interface specified by
-//! the Idris2 ABI definitions in src/abi/Foreign.idr. It provides
-//! C-callable functions for opening databases, storing/fetching knots,
-//! and computing invariants.
-//!
-//! The canonical implementation is in Julia (src/*.jl). This FFI layer
-//! enables other languages (C, C++, Rust, Python via ctypes, etc.) to
-//! use Skein databases without a Julia runtime.
 
 const std = @import("std");
-const c = @cImport({
-    @cInclude("sqlite3.h");
-});
 
-// -- Error codes (matching Foreign.idr SkeinError) --
+// Version information (keep in sync with project)
+const VERSION = "0.1.0";
+const BUILD_INFO = "SKEIN.JL built with Zig " ++ @import("builtin").zig_version_string;
 
-pub const SKEIN_OK: c_int = 0;
-pub const SKEIN_ERR_OPEN: c_int = 1;
-pub const SKEIN_ERR_QUERY: c_int = 2;
-pub const SKEIN_ERR_NOT_FOUND: c_int = 3;
-pub const SKEIN_ERR_DUPLICATE: c_int = 4;
-pub const SKEIN_ERR_READ_ONLY: c_int = 5;
-pub const SKEIN_ERR_INVALID: c_int = 6;
+/// Thread-local error storage
+threadlocal var last_error: ?[]const u8 = null;
 
-// -- Opaque handle --
+/// Set the last error message
+fn setError(msg: []const u8) void {
+    last_error = msg;
+}
 
-const SkeinDB = struct {
-    db: ?*c.sqlite3,
-    readonly: bool,
+/// Clear the last error
+fn clearError() void {
+    last_error = null;
+}
+
+//==============================================================================
+// Core Types (must match src/abi/Types.idr)
+//==============================================================================
+
+/// Result codes (must match Idris2 Result type)
+pub const Result = enum(c_int) {
+    ok = 0,
+    @"error" = 1,
+    invalid_param = 2,
+    out_of_memory = 3,
+    null_pointer = 4,
 };
 
-// -- Database lifecycle --
+/// Library handle (opaque to prevent direct access)
+pub const Handle = opaque {
+    // Internal state hidden from C
+    allocator: std.mem.Allocator,
+    initialized: bool,
+    // Add your fields here
+};
 
-/// Open or create a Skein database.
-///
-/// path: null-terminated file path, or ":memory:" for in-memory.
-/// readonly: 0 for read-write, 1 for read-only.
-/// Returns: opaque handle, or null on failure.
-export fn skein_open(path: [*:0]const u8, readonly: c_int) callconv(.C) ?*SkeinDB {
-    const flags: c_int = if (readonly != 0)
-        c.SQLITE_OPEN_READONLY
-    else
-        c.SQLITE_OPEN_READWRITE | c.SQLITE_OPEN_CREATE;
+//==============================================================================
+// Library Lifecycle
+//==============================================================================
 
-    var sqlite_db: ?*c.sqlite3 = null;
-    const rc = c.sqlite3_open_v2(path, &sqlite_db, flags, null);
-    if (rc != c.SQLITE_OK) {
-        if (sqlite_db) |db| c.sqlite3_close(db);
+/// Initialize the library
+/// Returns a handle, or null on failure
+export fn Skein.jl_init() ?*Handle {
+    const allocator = std.heap.c_allocator;
+
+    const handle = allocator.create(Handle) catch {
+        setError("Failed to allocate handle");
         return null;
-    }
-
-    // Enable WAL mode and foreign keys
-    _ = c.sqlite3_exec(sqlite_db, "PRAGMA journal_mode=WAL", null, null, null);
-    _ = c.sqlite3_exec(sqlite_db, "PRAGMA foreign_keys=ON", null, null, null);
-
-    if (readonly == 0) {
-        // Create tables
-        _ = c.sqlite3_exec(sqlite_db, @embedFile("schema.sql"), null, null, null);
-    }
-
-    const handle = std.heap.c_allocator.create(SkeinDB) catch return null;
-    handle.* = .{
-        .db = sqlite_db,
-        .readonly = readonly != 0,
     };
+
+    // Initialize handle
+    handle.* = .{
+        .allocator = allocator,
+        .initialized = true,
+    };
+
+    clearError();
     return handle;
 }
 
-/// Close a database handle and free resources.
-export fn skein_close(handle: ?*SkeinDB) callconv(.C) void {
+/// Free the library handle
+export fn Skein.jl_free(handle: ?*Handle) void {
     const h = handle orelse return;
-    if (h.db) |db| _ = c.sqlite3_close(db);
-    std.heap.c_allocator.destroy(h);
+    const allocator = h.allocator;
+
+    // Clean up resources
+    h.initialized = false;
+
+    allocator.destroy(h);
+    clearError();
 }
 
-// -- Invariant computation (pure, no database) --
+//==============================================================================
+// Core Operations
+//==============================================================================
 
-/// Compute the crossing number from a raw Gauss code array.
-///
-/// crossings: pointer to signed int32 array.
-/// length: number of elements.
-/// Returns: crossing number (>= 0), or -1 on error.
-export fn skein_crossing_number(crossings: ?[*]const i32, length: c_int) callconv(.C) c_int {
-    if (length < 0) return -1;
-    if (length == 0) return 0;
-    const data = crossings orelse return -1;
-    const len: usize = @intCast(length);
+/// Process data (example operation)
+export fn Skein.jl_process(handle: ?*Handle, input: u32) Result {
+    const h = handle orelse {
+        setError("Null handle");
+        return .null_pointer;
+    };
 
-    // Count distinct absolute values
-    var seen = std.AutoHashMap(u32, void).init(std.heap.c_allocator);
-    defer seen.deinit();
-
-    for (0..len) |i| {
-        const abs_val: u32 = @intCast(@abs(data[i]));
-        seen.put(abs_val, {}) catch return -1;
+    if (!h.initialized) {
+        setError("Handle not initialized");
+        return .@"error";
     }
 
-    return @intCast(seen.count());
+    // Example processing logic
+    _ = input;
+
+    clearError();
+    return .ok;
 }
 
-/// Compute the writhe from a raw Gauss code array.
-///
-/// crossings: pointer to signed int32 array.
-/// length: number of elements.
-/// Returns: writhe value, or std.math.minInt(i32) on error.
-export fn skein_writhe(crossings: ?[*]const i32, length: c_int) callconv(.C) c_int {
-    if (length < 0) return std.math.minInt(c_int);
-    if (length == 0) return 0;
-    const data = crossings orelse return std.math.minInt(c_int);
-    const len: usize = @intCast(length);
+//==============================================================================
+// String Operations
+//==============================================================================
 
-    var first_sign = std.AutoHashMap(u32, i32).init(std.heap.c_allocator);
-    defer first_sign.deinit();
+/// Get a string result (example)
+/// Caller must free the returned string
+export fn Skein.jl_get_string(handle: ?*Handle) ?[*:0]const u8 {
+    const h = handle orelse {
+        setError("Null handle");
+        return null;
+    };
 
-    var w: c_int = 0;
-
-    for (0..len) |i| {
-        const val = data[i];
-        const idx: u32 = @intCast(@abs(val));
-        const sgn: i32 = if (val > 0) 1 else -1;
-
-        if (first_sign.get(idx)) |fs| {
-            w += fs;
-            _ = fs;
-        } else {
-            first_sign.put(idx, sgn) catch return std.math.minInt(c_int);
-        }
+    if (!h.initialized) {
+        setError("Handle not initialized");
+        return null;
     }
 
-    return w;
+    // Example: allocate and return a string
+    const result = h.allocator.dupeZ(u8, "Example result") catch {
+        setError("Failed to allocate string");
+        return null;
+    };
+
+    clearError();
+    return result.ptr;
 }
 
-/// Count knots in the database.
-///
-/// Returns: count (>= 0), or -1 on error.
-export fn skein_count(handle: ?*SkeinDB) callconv(.C) c_int {
-    const h = handle orelse return -1;
-    const db = h.db orelse return -1;
+/// Free a string allocated by the library
+export fn Skein.jl_free_string(str: ?[*:0]const u8) void {
+    const s = str orelse return;
+    const allocator = std.heap.c_allocator;
 
-    var stmt: ?*c.sqlite3_stmt = null;
-    const rc = c.sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM knots", -1, &stmt, null);
-    if (rc != c.SQLITE_OK) return -1;
-    defer _ = c.sqlite3_finalize(stmt);
-
-    if (c.sqlite3_step(stmt) == c.SQLITE_ROW) {
-        return c.sqlite3_column_int(stmt, 0);
-    }
-    return -1;
+    const slice = std.mem.span(s);
+    allocator.free(slice);
 }
 
-/// Check if a knot with the given name exists.
-///
-/// Returns: 1 if exists, 0 if not, -1 on error.
-export fn skein_haskey(handle: ?*SkeinDB, name: [*:0]const u8) callconv(.C) c_int {
-    const h = handle orelse return -1;
-    const db = h.db orelse return -1;
+//==============================================================================
+// Array/Buffer Operations
+//==============================================================================
 
-    var stmt: ?*c.sqlite3_stmt = null;
-    const rc = c.sqlite3_prepare_v2(db, "SELECT 1 FROM knots WHERE name = ? LIMIT 1", -1, &stmt, null);
-    if (rc != c.SQLITE_OK) return -1;
-    defer _ = c.sqlite3_finalize(stmt);
+/// Process an array of data
+export fn Skein.jl_process_array(
+    handle: ?*Handle,
+    buffer: ?[*]const u8,
+    len: u32,
+) Result {
+    const h = handle orelse {
+        setError("Null handle");
+        return .null_pointer;
+    };
 
-    _ = c.sqlite3_bind_text(stmt, 1, name, -1, null);
+    const buf = buffer orelse {
+        setError("Null buffer");
+        return .null_pointer;
+    };
 
-    if (c.sqlite3_step(stmt) == c.SQLITE_ROW) {
-        return 1;
+    if (!h.initialized) {
+        setError("Handle not initialized");
+        return .@"error";
     }
-    return 0;
+
+    // Access the buffer
+    const data = buf[0..len];
+    _ = data;
+
+    // Process data here
+
+    clearError();
+    return .ok;
 }
 
-/// Delete a knot by name.
-///
-/// Returns: error code.
-export fn skein_delete(handle: ?*SkeinDB, name: [*:0]const u8) callconv(.C) c_int {
-    const h = handle orelse return SKEIN_ERR_INVALID;
-    if (h.readonly) return SKEIN_ERR_READ_ONLY;
-    const db = h.db orelse return SKEIN_ERR_INVALID;
+//==============================================================================
+// Error Handling
+//==============================================================================
 
-    var stmt: ?*c.sqlite3_stmt = null;
-    const rc = c.sqlite3_prepare_v2(db, "DELETE FROM knots WHERE name = ?", -1, &stmt, null);
-    if (rc != c.SQLITE_OK) return SKEIN_ERR_QUERY;
-    defer _ = c.sqlite3_finalize(stmt);
+/// Get the last error message
+/// Returns null if no error
+export fn Skein.jl_last_error() ?[*:0]const u8 {
+    const err = last_error orelse return null;
 
-    _ = c.sqlite3_bind_text(stmt, 1, name, -1, null);
+    // Return C string (static storage, no need to free)
+    const allocator = std.heap.c_allocator;
+    const c_str = allocator.dupeZ(u8, err) catch return null;
+    return c_str.ptr;
+}
 
-    if (c.sqlite3_step(stmt) != c.SQLITE_DONE) {
-        return SKEIN_ERR_QUERY;
+//==============================================================================
+// Version Information
+//==============================================================================
+
+/// Get the library version
+export fn Skein.jl_version() [*:0]const u8 {
+    return VERSION.ptr;
+}
+
+/// Get build information
+export fn Skein.jl_build_info() [*:0]const u8 {
+    return BUILD_INFO.ptr;
+}
+
+//==============================================================================
+// Callback Support
+//==============================================================================
+
+/// Callback function type (C ABI)
+pub const Callback = *const fn (u64, u32) callconv(.C) u32;
+
+/// Register a callback
+export fn Skein.jl_register_callback(
+    handle: ?*Handle,
+    callback: ?Callback,
+) Result {
+    const h = handle orelse {
+        setError("Null handle");
+        return .null_pointer;
+    };
+
+    const cb = callback orelse {
+        setError("Null callback");
+        return .null_pointer;
+    };
+
+    if (!h.initialized) {
+        setError("Handle not initialized");
+        return .@"error";
     }
-    return SKEIN_OK;
+
+    // Store callback for later use
+    _ = cb;
+
+    clearError();
+    return .ok;
+}
+
+//==============================================================================
+// Utility Functions
+//==============================================================================
+
+/// Check if handle is initialized
+export fn Skein.jl_is_initialized(handle: ?*Handle) u32 {
+    const h = handle orelse return 0;
+    return if (h.initialized) 1 else 0;
+}
+
+//==============================================================================
+// Tests
+//==============================================================================
+
+test "lifecycle" {
+    const handle = Skein.jl_init() orelse return error.InitFailed;
+    defer Skein.jl_free(handle);
+
+    try std.testing.expect(Skein.jl_is_initialized(handle) == 1);
+}
+
+test "error handling" {
+    const result = Skein.jl_process(null, 0);
+    try std.testing.expectEqual(Result.null_pointer, result);
+
+    const err = Skein.jl_last_error();
+    try std.testing.expect(err != null);
+}
+
+test "version" {
+    const ver = Skein.jl_version();
+    const ver_str = std.mem.span(ver);
+    try std.testing.expectEqualStrings(VERSION, ver_str);
 }
