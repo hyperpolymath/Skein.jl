@@ -42,3 +42,11 @@ Thumbs.db
 ai-cli-crash-capture/
 sync_report*.txt
 sync_repos_report*.txt
+target/
+node_modules/
+_build/
+deps/
+.elixir_ls/
+.cache/
+build/
+dist/
