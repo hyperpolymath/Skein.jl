@@ -11,7 +11,9 @@ image:https://img.shields.io/badge/Completion-75%25-yellow[75%,link="TOPOLOGY.md
 A knot-theoretic database for Julia. Store, index, and query knots by their topological invariants.
 
 image:https://img.shields.io/badge/Julia-1.10+-blue.svg[Julia 1.10+]
+image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices,link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/Skein.jl"]
 image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[PMPL-1.0-or-later]
+image:https://api.thegreenwebfoundation.org/greencheckimage/github.com[Green Web,link="https://www.thegreenwebfoundation.org/green-web-check/?url=github.com"]
 
 toc::[]
 
