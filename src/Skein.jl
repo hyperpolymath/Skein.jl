@@ -65,6 +65,10 @@ export LaurentPoly, bracket_polynomial, jones_from_bracket, jones_polynomial_str
 export seifert_circles, genus
 export serialise_laurent, deserialise_laurent
 
+# Planar-diagram (PD) Jones polynomial — the correct, diagram-aware route
+export PDCode, PDCrossing, parse_pd, pd_writhe
+export pd_bracket_polynomial, jones_from_pd, jones_from_pd_str
+
 # Composable query predicates
 export QueryPredicate, crossing, writhe_eq, genus_eq, meta_eq, name_like
 
