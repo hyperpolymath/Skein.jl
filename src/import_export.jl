@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 """
@@ -294,11 +294,28 @@ function import_knotinfo!(db::SkeinDB)
          Dict("type" => "non-alternating", "alternating" => "false")),
     ]
 
+    # Authoritative Knot Atlas PD codes for the prime knots through 7
+    # crossings (shared with the hardcoded knot table). For these knots the
+    # Jones polynomial is computed from the PLANAR DIAGRAM and stored
+    # explicitly, because the Kauffman bracket is a diagram invariant whose
+    # loop counts a bare Gauss code cannot encode (a Gauss-code bracket
+    # collapses topologically distinct knots). This keeps stored Jones
+    # polynomials consistent with `prime_knot(...)` and correct against the
+    # published Knot Atlas values.
+    pd_by_name = Dict(name => pd_str
+                      for (name, _dt, pd_str, _meta) in _KNOT_TABLE_DT_DATA)
+
     count = 0
     for (name, dt, meta) in knot_data
         if !haskey(db, name)
             gc = dt_to_gauss(dt)
-            store!(db, name, gc; metadata = meta)
+            if haskey(pd_by_name, name)
+                pd = parse_pd(pd_by_name[name])
+                jones = jones_from_pd_str(pd)
+                store!(db, name, gc; metadata = meta, jones_polynomial = jones)
+            else
+                store!(db, name, gc; metadata = meta)
+            end
             count += 1
         end
     end

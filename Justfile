@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Skein.jl justfile
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
@@ -116,7 +116,9 @@ tour:
     echo "  Skein.Jl — Guided Tour"
     echo "═══════════════════════════════════════════════════"
     echo ""
-    echo '// SPDX-License-Identifier: PMPL-1.0-or-later'
+    # REUSE-IgnoreStart
+    echo '// SPDX-License-Identifier: MPL-2.0'
+    # REUSE-IgnoreEnd
     echo ""
     echo "Key directories:"
     echo "  src/                      Source code" 

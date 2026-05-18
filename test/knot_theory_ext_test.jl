@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 
 using Test
 using Skein
@@ -56,7 +56,11 @@ using KnotTheory
 
     @testset "Gauss fallback remains available" begin
         db = SkeinDB(":memory:")
-        g = GaussCode([1, -2, 3, -1, 2, -3])
+        # Both `using Skein` and `using KnotTheory` export a `GaussCode`
+        # type, so the bare name is ambiguous in this file. The Skein
+        # storage API (`store!`/`SkeinDB`) operates on `Skein.GaussCode`,
+        # so qualify it explicitly.
+        g = Skein.GaussCode([1, -2, 3, -1, 2, -3])
         store!(db, "gauss_trefoil", g)
         record = fetch_knot(db, "gauss_trefoil")
         @test !isnothing(record)

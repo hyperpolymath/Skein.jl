@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
-# (MPL-2.0 is automatic legal fallback until PMPL is formally recognised)
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #
 # Skein.jl — Benchmark suite with Six Sigma classification.

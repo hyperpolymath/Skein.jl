@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # Contributing to Skein.jl
@@ -75,7 +75,7 @@ Open an issue with:
 - Add docstrings to all public functions
 - Include SPDX header on new files:
   ```julia
-  # SPDX-License-Identifier: PMPL-1.0-or-later
+  # SPDX-License-Identifier: MPL-2.0
   # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
   ```
 
@@ -91,4 +91,4 @@ To add a new invariant:
 
 ## Licence
 
-By contributing, you agree that your contributions will be licensed under PMPL-1.0-or-later.
+By contributing, you agree that your contributions will be licensed under MPL-2.0.
