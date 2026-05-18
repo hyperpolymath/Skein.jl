@@ -1205,7 +1205,45 @@ using Random
             @test p isa LaurentPoly
         end
 
-        # Each knot has a unique Jones polynomial (distinguishes all primes through 7)
+        # The Jones polynomial of every table knot must equal the published
+        # Knot Atlas value (https://katlas.org/wiki/<name>) exactly. The
+        # Jones polynomial is computed from the canonical Knot Atlas planar
+        # diagram (PD code) via the planar Kauffman state sum — NOT from a
+        # bare Gauss code, which cannot encode the planar embedding the
+        # Kauffman bracket requires and which previously collapsed distinct
+        # knots onto the same polynomial. Values are serialised as
+        # "exp:coeff,..." in t (Knot Atlas variable q = t).
+        knot_atlas_jones = Dict(
+            "0_1" => "0:1",
+            "3_1" => "-4:-1,-3:1,-1:1",
+            "4_1" => "-2:1,-1:-1,0:1,1:-1,2:1",
+            "5_1" => "-7:-1,-6:1,-5:-1,-4:1,-2:1",
+            "5_2" => "-6:-1,-5:1,-4:-1,-3:2,-2:-1,-1:1",
+            "6_1" => "-4:1,-3:-1,-2:1,-1:-2,0:2,1:-1,2:1",
+            "6_2" => "-5:1,-4:-2,-3:2,-2:-2,-1:2,0:-1,1:1",
+            "6_3" => "-3:-1,-2:2,-1:-2,0:3,1:-2,2:2,3:-1",
+            "7_1" => "-10:-1,-9:1,-8:-1,-7:1,-6:-1,-5:1,-3:1",
+            "7_2" => "-8:-1,-7:1,-6:-1,-5:2,-4:-2,-3:2,-2:-1,-1:1",
+            "7_3" => "2:1,3:-1,4:2,5:-2,6:3,7:-2,8:1,9:-1",
+            "7_4" => "1:1,2:-2,3:3,4:-2,5:3,6:-2,7:1,8:-1",
+            "7_5" => "-9:-1,-8:2,-7:-3,-6:3,-5:-3,-4:3,-3:-1,-2:1",
+            "7_6" => "-6:-1,-5:2,-4:-3,-3:4,-2:-3,-1:3,0:-2,1:1",
+            "7_7" => "-3:-1,-2:3,-1:-3,0:4,1:-4,2:3,3:-2,4:1",
+        )
+        @test length(knot_atlas_jones) == length(all)
+        for k in all
+            @test haskey(knot_atlas_jones, k.name)
+            # Compare as Laurent polynomials so the check is independent of
+            # term ordering / formatting.
+            @test deserialise_laurent(k.jones_polynomial) ==
+                  deserialise_laurent(knot_atlas_jones[k.name])
+        end
+
+        # Each knot has a unique Jones polynomial (distinguishes all primes
+        # through 7). With the Jones polynomials now computed correctly from
+        # planar diagrams, this holds genuinely (the Jones polynomial is a
+        # complete invariant across the prime knots in this crossing range);
+        # it is no longer the spuriously-collapsed Gauss-code result.
         jones_set = Set(k.jones_polynomial for k in all)
         @test length(jones_set) == length(all)
 

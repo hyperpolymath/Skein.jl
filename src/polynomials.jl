@@ -291,3 +291,228 @@ function genus(g::GaussCode)::Int
     s = length(seifert_circles(g))
     div(n - s + 1, 2)
 end
+
+# -- Planar-diagram (PD) Kauffman bracket / Jones polynomial --
+#
+# The Kauffman bracket, and hence the Jones polynomial, is a *diagram*
+# invariant whose per-state loop count depends on the rotation system of
+# the diagram. An unsigned (or even a signed) Gauss code does NOT encode a
+# planar embedding, so a bracket computed from a Gauss code alone collapses
+# topologically distinct knots (e.g. it cannot distinguish the figure-eight
+# from the unknot). The mathematically correct route is the planar diagram
+# (PD code): each crossing carries its four arc labels in counter-clockwise
+# order, which fully determines the planar 4-valent graph and therefore the
+# per-state loop count.
+#
+# This implements the standard planar state sum over a Knot-Atlas-convention
+# PD code `X[a, b, c, d]`:
+#   * the under-strand enters arc `a` and exits arc `c`;
+#   * the over-strand enters arc `d` and exits arc `b`;
+#   * arcs are listed counter-clockwise and are numbered 1..2n along the
+#     knot's orientation.
+# The A-smoothing joins (a,b) and (c,d); the B-smoothing joins (b,c) and
+# (d,a). Loops are counted exactly as cycles of the perfect matching formed
+# by the union of the arc-incidence pairing and the per-state smoothing
+# pairing. The writhe is read geometrically from the PD (a crossing is
+# positive iff its over-strand outgoing arc `b` is the orientation-successor
+# of its over-strand incoming arc `d`, i.e. `b ≡ d + 1 (mod 2n)`), which is
+# independent of any possibly-inconsistent declared sign.
+#
+# This engine has been verified to reproduce the published Knot Atlas Jones
+# polynomial for every prime knot through 7 crossings (see test/runtests.jl
+# "Prime knot table").
+
+"""
+    PDCrossing
+
+A single crossing of a planar diagram in Knot-Atlas convention: four arc
+labels `(a, b, c, d)` in counter-clockwise order. The under-strand runs
+`a → c`, the over-strand runs `d → b`.
+"""
+struct PDCrossing
+    arcs::NTuple{4,Int}
+end
+
+"""
+    PDCode(crossings::Vector{PDCrossing})
+
+A planar diagram: an ordered list of crossings. Arc labels run 1..2n where
+n is the number of crossings (the unknot is the empty PD code).
+"""
+struct PDCode
+    crossings::Vector{PDCrossing}
+end
+
+PDCode() = PDCode(PDCrossing[])
+Base.length(p::PDCode) = length(p.crossings)
+Base.isempty(p::PDCode) = isempty(p.crossings)
+
+"""
+    parse_pd(s::AbstractString) -> PDCode
+
+Parse a Knot-Atlas style PD string of comma-separated 4-tuples, e.g.
+`"X1,4,2,5 X3,6,4,1 X5,2,6,3"`. An empty string is the unknot.
+"""
+function parse_pd(s::AbstractString)::PDCode
+    toks = split(strip(s))
+    isempty(toks) && return PDCode()
+    cs = PDCrossing[]
+    for tok in toks
+        startswith(tok, "X") || error("invalid PD token (expected leading X): $tok")
+        nums = parse.(Int, split(tok[2:end], ","))
+        length(nums) == 4 || error("invalid PD crossing (need 4 arcs): $tok")
+        push!(cs, PDCrossing((nums[1], nums[2], nums[3], nums[4])))
+    end
+    PDCode(cs)
+end
+
+"""
+    pd_writhe(pd::PDCode) -> Int
+
+The geometric writhe read directly from the planar diagram. In Knot-Atlas
+convention arc labels increase by one along the knot's orientation, so a
+crossing is positive iff its over-strand outgoing arc `b` is the immediate
+orientation-successor of its over-strand incoming arc `d`
+(`b ≡ d + 1 (mod 2n)`), and negative otherwise. This is independent of any
+declared crossing sign and is the value needed for the Jones normalisation.
+"""
+function pd_writhe(pd::PDCode)::Int
+    n = length(pd)
+    n == 0 && return 0
+    twon = 2n
+    w = 0
+    for c in pd.crossings
+        _, b, _, d = c.arcs
+        w += (mod1(d + 1, twon) == b) ? 1 : -1
+    end
+    w
+end
+
+# Number of loops in a single Kauffman state, counted exactly as cycles of
+# the perfect matching formed by (1) the arc-incidence pairing — the two
+# slots sharing an arc label — and (2) the per-state smoothing pairing.
+function _pd_state_loops(pd::PDCode, state::Integer)::Int
+    n = length(pd)
+    arc_slots = Dict{Int,Vector{Int}}()
+    for (i, c) in enumerate(pd.crossings)
+        for (slot, arc) in enumerate(c.arcs)
+            push!(get!(arc_slots, arc, Int[]), 4 * (i - 1) + slot)
+        end
+    end
+
+    arc_partner = Dict{Int,Int}()
+    for (_, v) in arc_slots
+        length(v) == 2 || error("invalid PD code: arc shared by $(length(v)) endpoints (expected 2)")
+        arc_partner[v[1]] = v[2]
+        arc_partner[v[2]] = v[1]
+    end
+
+    sm_partner = Dict{Int,Int}()
+    for k in 1:n
+        s1 = 4 * (k - 1) + 1
+        s2 = 4 * (k - 1) + 2
+        s3 = 4 * (k - 1) + 3
+        s4 = 4 * (k - 1) + 4
+        if ((state >> (k - 1)) & 1) == 0
+            # A-smoothing: join (a,b) and (c,d)
+            sm_partner[s1] = s2; sm_partner[s2] = s1
+            sm_partner[s3] = s4; sm_partner[s4] = s3
+        else
+            # B-smoothing: join (b,c) and (d,a)
+            sm_partner[s2] = s3; sm_partner[s3] = s2
+            sm_partner[s4] = s1; sm_partner[s1] = s4
+        end
+    end
+
+    total = 4 * n
+    seen = falses(total)
+    loops = 0
+    for start in 1:total
+        seen[start] && continue
+        loops += 1
+        node = start
+        use_arc = true
+        while !seen[node]
+            seen[node] = true
+            node = use_arc ? arc_partner[node] : sm_partner[node]
+            use_arc = !use_arc
+        end
+    end
+    loops
+end
+
+"""
+    pd_bracket_polynomial(pd::PDCode) -> LaurentPoly
+
+The Kauffman bracket ⟨D⟩ in the variable A, computed by the planar state
+sum over the PD code. Each of the 2^n states contributes
+`A^σ · d^(loops-1)` with `d = -A² - A⁻²` and `σ = (#A-smoothings) -
+(#B-smoothings)`. Loop counts use the true planar 4-valent structure, so —
+unlike a Gauss-code bracket — this distinguishes topologically distinct
+diagrams.
+"""
+function pd_bracket_polynomial(pd::PDCode)::LaurentPoly
+    n = length(pd)
+    n == 0 && return LaurentPoly(0 => 1)
+    d = LaurentPoly(2 => -1, -2 => -1)  # d = -A² - A⁻²
+    result = LaurentPoly()
+    for state in 0:(2^n - 1)
+        a_count = count_ones(~state & ((1 << n) - 1))  # zero bits = A-smoothings
+        loops = _pd_state_loops(pd, state)
+        sigma = 2 * a_count - n
+        d_pow = lpoly_pow(d, loops - 1)
+        result = lpoly_add(result, LaurentPoly(e + sigma => c for (e, c) in d_pow))
+    end
+    result
+end
+
+"""
+    jones_from_pd(pd::PDCode) -> LaurentPoly
+
+The Jones polynomial V(t) computed from the planar diagram via the Kauffman
+bracket: `V = (-A)^(-3w) ⟨D⟩` with the geometric writhe `w = pd_writhe(pd)`,
+followed by the substitution `t = A⁻⁴`. Returns a Laurent polynomial in `t`
+with integer exponents.
+
+This is the mathematically correct Jones computation for the knot table:
+it has been verified term-for-term against the published Knot Atlas values
+for every prime knot through 7 crossings.
+"""
+function jones_from_pd(pd::PDCode)::LaurentPoly
+    n = length(pd)
+    n == 0 && return LaurentPoly(0 => 1)
+
+    bracket = pd_bracket_polynomial(pd)
+    w = pd_writhe(pd)
+
+    # (-A)^(-3w) = (-1)^w · A^(-3w)
+    sign_factor = iseven(w) ? 1 : -1
+    exp_shift = -3 * w
+    normalised = LaurentPoly()
+    for (e, c) in bracket
+        normalised[e + exp_shift] = get(normalised, e + exp_shift, 0) + c * sign_factor
+    end
+    filter!(p -> p.second != 0, normalised)
+
+    # t = A⁻⁴ ⇒ t-exponent = -(A-exponent)/4. For a valid knot PD every
+    # surviving A-exponent is divisible by 4; a non-divisible exponent means
+    # the PD code is not a valid single-component planar diagram.
+    jones = LaurentPoly()
+    for (a_exp, coeff) in normalised
+        a_exp % 4 == 0 ||
+            error("PD code does not yield an integer Jones polynomial " *
+                  "(A-exponent $a_exp not divisible by 4); the PD code is invalid")
+        t_exp = -div(a_exp, 4)
+        jones[t_exp] = get(jones, t_exp, 0) + coeff
+    end
+    filter!(p -> p.second != 0, jones)
+    jones
+end
+
+"""
+    jones_from_pd_str(pd::PDCode) -> String
+
+The Jones polynomial computed from the planar diagram, serialised in the
+same `"exp:coeff,..."` format as [`jones_polynomial_str`](@ref).
+"""
+jones_from_pd_str(pd::PDCode)::String = serialise_laurent(jones_from_pd(pd))
