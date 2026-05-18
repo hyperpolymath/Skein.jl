@@ -45,7 +45,17 @@ CREATE TABLE IF NOT EXISTS schema_info (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+"""
 
+# Index DDL is kept separate from CREATE_TABLES and applied *after* schema
+# migrations. On a pre-existing legacy database the `CREATE TABLE IF NOT
+# EXISTS knots` statement is a no-op (the table already exists with the old
+# column set), so the columns that later schema versions introduce — e.g.
+# `diagram_format` — are only present once `_migrate_v*` has run. Creating an
+# index on such a column before the migration adds it raises
+# `SQLiteException("no such column: ...")`. Ordering: create tables → migrate
+# → create indexes.
+const CREATE_INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_knots_crossing ON knots(crossing_number);
 CREATE INDEX IF NOT EXISTS idx_knots_writhe ON knots(writhe);
 CREATE INDEX IF NOT EXISTS idx_knots_hash ON knots(gauss_hash);
@@ -95,13 +105,15 @@ mutable struct SkeinDB
         DBInterface.execute(conn, "PRAGMA foreign_keys=ON")
 
         if !readonly
-            # Create tables if they don't exist
+            # 1. Create tables if they don't exist. For a pre-existing legacy
+            #    database the `knots` CREATE is a no-op and the table keeps its
+            #    old column set; the migrations below add the missing columns.
             for stmt in split(CREATE_TABLES, ";")
                 stripped = strip(stmt)
                 isempty(stripped) || DBInterface.execute(conn, stripped)
             end
 
-            # Check for schema migration
+            # 2. Check for schema migration
             current_version = _get_schema_version(conn)
             if current_version < 2
                 _migrate_v1_to_v2(conn)
@@ -111,6 +123,13 @@ mutable struct SkeinDB
             end
             if current_version < 4
                 _migrate_v3_to_v4(conn)
+            end
+
+            # 3. Create indexes only after migrations have ensured every
+            #    indexed column exists (e.g. diagram_format on legacy DBs).
+            for stmt in split(CREATE_INDEXES, ";")
+                stripped = strip(stmt)
+                isempty(stripped) || DBInterface.execute(conn, stripped)
             end
 
             # Record schema version
@@ -377,6 +396,39 @@ end
 
 # -- Internal helpers --
 
+"""
+    _parse_db_timestamp(s) -> DateTime
+
+Parse a timestamp string read back from the `knots` table.
+
+Two formats can legitimately appear in the database:
+
+  * Julia's `string(Dates.now())` — ISO-8601 with a `T` separator and
+    fractional seconds, e.g. `2026-05-18T12:34:56.789`. This is what
+    `store!`/`update_metadata!` write.
+  * SQLite's `datetime('now')` — a space separator and **no** fractional
+    seconds, e.g. `2026-05-18 12:34:56`. This is produced by the
+    `created_at`/`updated_at` column `DEFAULT (datetime('now'))` whenever
+    a row is inserted without explicit timestamps (e.g. legacy databases
+    or rows written by external tooling before a schema migration).
+
+`DateTime(::AbstractString)` only accepts the first form, so reading a
+legacy/default-timestamped row used to throw `ArgumentError: Invalid
+DateTime string`. Normalise the SQLite form before parsing.
+"""
+function _parse_db_timestamp(s::AbstractString)::DateTime
+    str = String(strip(s))
+    # SQLite's datetime('now') uses a space between date and time and has
+    # no fractional seconds. Convert "YYYY-MM-DD HH:MM:SS" to ISO-8601.
+    if length(str) >= 19 && str[11] == ' '
+        str = str[1:10] * "T" * str[12:end]
+    end
+    if !occursin('.', str) && occursin('T', str)
+        str *= ".0"
+    end
+    DateTime(str)
+end
+
 function row_to_record(db::SkeinDB, row)::KnotRecord
     id = string(row[:id])
     meta = fetch_metadata(db, id)
@@ -406,8 +458,8 @@ function row_to_record(db::SkeinDB, row)::KnotRecord
         gen,
         sc,
         meta,
-        DateTime(string(row[:created_at])),
-        DateTime(string(row[:updated_at]))
+        _parse_db_timestamp(string(row[:created_at])),
+        _parse_db_timestamp(string(row[:updated_at]))
     )
 end
 
