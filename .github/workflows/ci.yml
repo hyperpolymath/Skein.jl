@@ -2,17 +2,14 @@
 name: CI
 permissions:
   contents: read
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   test:
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
@@ -26,15 +23,11 @@ jobs:
         include:
           - julia-version: '1.11'
             os: macos-latest
-
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
       - uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2
         with:
           version: ${{ matrix.julia-version }}
-
       - uses: julia-actions/cache@e97f6fc1a6e21c82253c85e269be7340376aa425 # v2
-
       - name: Install, build, test
         run: julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'
