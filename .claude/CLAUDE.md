@@ -19,7 +19,7 @@ architecture. See `.machine_readable/6a2/ECOSYSTEM.a2ml`, `ROADMAP.adoc`, and
 ## Build & Test
 
 ```bash
-# Run tests (611+ tests, ~16s)
+# Run tests (1089 tests, ~20s; needs sibling path-deps ../AcceleratorGate.jl + ../KnotTheory.jl)
 julia --project=. -e 'using Pkg; Pkg.test()'
 
 # Run benchmarks

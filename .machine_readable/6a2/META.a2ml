@@ -21,5 +21,5 @@ adr-jones-from-pd = "Jones polynomial computed from canonical planar diagrams (K
 adr-weakdep = "KnotTheory.jl integration via package extension so Skein stays usable standalone."
 
 [verification]
-tests = "611+ tests (test/runtests.jl + e2e / property / canonical / knot-theory-ext suites)"
+tests = "1089 tests, all passing (test/runtests.jl + e2e / property / canonical / knot-theory-ext suites; verified green 2026-06-14)"
 policy = "tests must actually pass (real `Pkg.test()` runs) before any commit — not eyeballed"

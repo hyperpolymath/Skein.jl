@@ -19,7 +19,7 @@ invariants-standalone = "crossing_number, writhe, gauss_hash, Jones (<=15 crossi
 invariants-with-knottheory = "Alexander, determinant, signature via ext/KnotTheoryExt.jl"
 retrieve = "keyword (exact/range/set/meta) + composable & / | predicates; equivalence (find_equivalents, find_isotopic), duplicates, statistics, pagination. (This is KRL's Retrieve leg — one of four KRL operations.)"
 data = "KnotInfo/Rolfsen import through 8 crossings; prime-knot table through 7 (knot_table.jl); CSV/JSON; DT-to-Gauss"
-tests = "611+ tests authored"
+tests = "1089 tests, all passing (test/runtests.jl + e2e / property / canonical / knot-theory-ext; verified green 2026-06-14)"
 
 [current-focus]
 direction = "Knot database as the maths analogue of a graph database (user framing). Skein = persistence + semantic-indexing layer of the KRL stack."
@@ -37,7 +37,7 @@ direction = "Knot database as the maths analogue of a graph database (user frami
 # no longer appears as a committed direction in any canonical doc.
 
 [open]
-verification = "no green test baseline yet: real Pkg.test run failed at precompile — KnotTheory weakdep needs package 'AcceleratorGate' (expected at /home/user/AcceleratorGate.jl), not provided in this env"
+test-baseline = "RESOLVED 2026-06-14 — GREEN: real Pkg.test() = 1089/1089 pass (20.3s, exit 0). Root cause was environmental: the path-deps AcceleratorGate.jl (hard) + KnotTheory.jl (weakdep) must be checked out as siblings at ../ (Manifest pins path = ../AcceleratorGate.jl / ../KnotTheory.jl). ci.yml now clones both before instantiate so the baseline reproduces in CI. No Skein source/Manifest change was needed."
 alexander-standalone = "Alexander polynomial not computed standalone (needs PD/chirality; pd_code field enables a route)"
 julia-1_9 = "test (1.9) fails at Pkg.instantiate (dependency requires >= 1.10)"
 
