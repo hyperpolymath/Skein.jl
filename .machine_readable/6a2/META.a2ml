@@ -1,9 +1,25 @@
 # SPDX-License-Identifier: MPL-2.0
 # META.a2ml — Project meta-information
-# Converted from META.scm on 2026-03-15
+# Refreshed 2026-06-05 (previously converted from META.scm on 2026-03-15)
 
 [metadata]
 project = "Skein.jl"
 author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 license = "MPL-2.0"
 standard = "RSR 2026"
+
+[architecture]
+language = "Julia (>= 1.10)"
+storage = "SQLite (SQLite.jl), WAL mode, schema v4 with automatic migrations"
+representation = "Gauss codes (signed integer sequences); PD codes for planar-diagram-aware Jones"
+extension-model = "KnotTheory.jl is a weakdep loaded via a package extension (ext/KnotTheoryExt.jl) — never a hard dependency"
+
+[decisions]
+adr-krl-stack-role = "2026-06: Skein's grounded role is layer 4 (persistence + semantic indexing) of the KRL stack — it serves KRL's Retrieve operation (indexed store) and persists knot/tangle records. KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve), NOT a query language; QuandleDB is the Resolve layer. See 6a2/ECOSYSTEM.a2ml + 6a2/anchor/ANCHOR.a2ml."
+adr-graph-db-withdrawn = "2026-06: an earlier draft proposed realigning Skein into a knot graph database via a typed knot-relationship (edge) layer + traversal (connected-sum DAG, skein triples L+/L-/L0, mutation/crossing-change; schema v5). WITHDRAWN — it was authored on a mistaken 'KRL = query language' model. Skein-relation resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer, not necessarily Skein's persistence layer. The 'maths analogue of a graph database' remains the user's aspirational framing; any edge/traversal or schema change must first be re-grounded against the KRL 4-layer architecture."
+adr-jones-from-pd = "Jones polynomial computed from canonical planar diagrams (Kauffman state sum), not bare Gauss codes, which cannot encode the planar embedding and would collapse distinct knots."
+adr-weakdep = "KnotTheory.jl integration via package extension so Skein stays usable standalone."
+
+[verification]
+tests = "1089 tests, all passing (test/runtests.jl + e2e / property / canonical / knot-theory-ext suites; verified green 2026-06-14)"
+policy = "tests must actually pass (real `Pkg.test()` runs) before any commit — not eyeballed"

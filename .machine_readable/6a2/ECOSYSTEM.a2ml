@@ -1,10 +1,32 @@
 # SPDX-License-Identifier: MPL-2.0
 # ECOSYSTEM.a2ml — Ecosystem position
-# Converted from ECOSYSTEM.scm on 2026-03-15
+# Refreshed 2026-06-05 (corrected: KRL is a resolution language, NOT a query language)
 
 [metadata]
 project = "Skein.jl"
 ecosystem = "hyperpolymath"
 
 [position]
-type = "component"
+type = "engine"
+role = "Persistence + semantic-indexing layer of the KRL stack (the knot database)"
+
+# KRL = Knot Resolution Language: a COMPOSITIONAL language for Construct,
+# Transform, Resolve, Retrieve over tangles/knots/links. It is NOT a query
+# language — "resolution" (as in the skein relation) is the central act;
+# Retrieve/"query" is only one of the four operations.
+[krl-stack]
+layer-1-surface = "KRL surface syntax + grammar (krl repo); canonical impl KRLAdapter.jl; server-side parser quandledb/server/krl/"
+layer-2-interchange = "TangleIR — canonical interchange object (defined in KRLAdapter.jl, consumed by hyperpolymath/tangle)"
+layer-3-core = "Tangle core — proven type-safe small-step semantics (hyperpolymath/tangle, Lean: proofs/Tangle.lean)"
+layer-4-persistence = "Skein.jl (this repo) + QuandleDB — persistence and semantic indexing"
+
+[skein-role]
+serves = "the Retrieve operation of KRL — indexed store (find where jones = p, where crossing < 8) + persistence of knot/tangle records"
+knottheory = "weakdep — invariant engine (the Transform leg); loaded via ext/KnotTheoryExt.jl. (KRL's README calls the invariant engine JuliaKnot.jl — naming to reconcile.)"
+quandledb = "the Resolve layer (isotopy, quandle, equivalence class: equivalent?, classify, near) — paired with Skein at persistence/indexing; NOT an app that 'queries' Skein"
+
+# These three sibling database languages are each a DISTINCT paradigm.
+# Do NOT flatten any of them to SQL / 'query'.
+[distinct-from]
+gnpl = "Glyph Narration & Projection Language (Lithoglyph / Glyphbase) — synchronic + diachronic data: what it is, whence, whither; reading/writing those stories + counterfactuals"
+vcl = "VeriSim Consonance Language (VeriSimDB) — identity / consonance: propose / inspect / verify identity-states, not retrieval of octad components"

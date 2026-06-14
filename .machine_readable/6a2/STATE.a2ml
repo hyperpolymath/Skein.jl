@@ -1,14 +1,45 @@
 # SPDX-License-Identifier: MPL-2.0
 # STATE.a2ml — Project state checkpoint
-# Converted from STATE.scm on 2026-03-15
+# Refreshed 2026-06-05; corrected re: KRL paradigm (resolution, not query)
 
 [metadata]
 project = "Skein.jl"
 version = "0.1.0"
-last-updated = "2026-03-15"
+last-updated = "2026-06-14"
 status = "active"
 
 [project-context]
 name = "Skein.jl"
-completion-percentage = 0
-phase = "In development"
+completion-percentage = 75
+phase = "Beta — persistence + semantic-indexing layer (layer 4) of the KRL stack"
+
+[capabilities]
+storage = "SQLite backend, schema v4 (WAL mode), invariants auto-computed on insert; PD-native fields (diagram_format, canonical_diagram, pd_code)"
+invariants-standalone = "crossing_number, writhe, gauss_hash, Jones (<=15 crossings), genus, Seifert circles, canonical diagram"
+invariants-with-knottheory = "Alexander, determinant, signature via ext/KnotTheoryExt.jl"
+retrieve = "keyword (exact/range/set/meta) + composable & / | predicates; equivalence (find_equivalents, find_isotopic), duplicates, statistics, pagination. (This is KRL's Retrieve leg — one of four KRL operations.)"
+data = "KnotInfo/Rolfsen import through 8 crossings; prime-knot table through 7 (knot_table.jl); CSV/JSON; DT-to-Gauss"
+tests = "1089 tests, all passing (test/runtests.jl + e2e / property / canonical / knot-theory-ext; verified green 2026-06-14)"
+
+[current-focus]
+direction = "Knot database as the maths analogue of a graph database (user framing). Skein = persistence + semantic-indexing layer of the KRL stack."
+
+[withdrawn]
+# An earlier draft of this checkpoint proposed a Skein 'typed knot-relationship
+# edge layer + traversal (connected-sum DAG, skein triples)'. That was authored
+# on a MISTAKEN 'KRL = query language' model and is WITHDRAWN. KRL is the Knot
+# Resolution Language (Construct/Transform/Resolve/Retrieve); skein-relation
+# resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer,
+# NOT necessarily to Skein's persistence layer. Any Skein evolution must be
+# re-grounded against the KRL 4-layer architecture (see 6a2/ECOSYSTEM.a2ml)
+# before a schema change. ANCHOR/META/ROADMAP/CLAUDE.md were re-authored to the
+# grounded model on 2026-06-14 (this checkpoint); the withdrawn edge-layer framing
+# no longer appears as a committed direction in any canonical doc.
+
+[open]
+test-baseline = "RESOLVED 2026-06-14 — GREEN: real Pkg.test() = 1089/1089 pass (20.3s, exit 0). Root cause was environmental: the path-deps AcceleratorGate.jl (hard) + KnotTheory.jl (weakdep) must be checked out as siblings at ../ (Manifest pins path = ../AcceleratorGate.jl / ../KnotTheory.jl). ci.yml now clones both before instantiate so the baseline reproduces in CI. No Skein source/Manifest change was needed."
+alexander-standalone = "Alexander polynomial not computed standalone (needs PD/chirality; pd_code field enables a route)"
+julia-1_9 = "test (1.9) fails at Pkg.instantiate (dependency requires >= 1.10)"
+
+[notes]
+ecosystem = "Skein = persistence + semantic-indexing (layer 4) of the KRL stack; KRL = Knot Resolution Language (NOT a query language); QuandleDB = Resolve layer. See 6a2/ECOSYSTEM.a2ml."

@@ -29,5 +29,16 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/cache@e97f6fc1a6e21c82253c85e269be7340376aa425 # v2
+
+      # Skein depends on the estate packages AcceleratorGate.jl (hard dep) and
+      # KnotTheory.jl (weakdep) as adjacent path-deps — Manifest.toml pins
+      # path = "../AcceleratorGate.jl" and "../KnotTheory.jl". Neither is in a
+      # registry, so check them out as siblings before instantiate, otherwise
+      # Pkg.instantiate() fails with "AcceleratorGate ... required but not installed".
+      - name: Check out sibling estate path-deps
+        run: |
+          git clone --depth 1 https://github.com/hyperpolymath/AcceleratorGate.jl.git ../AcceleratorGate.jl
+          git clone --depth 1 https://github.com/hyperpolymath/KnotTheory.jl.git ../KnotTheory.jl
+
       - name: Install, build, test
         run: julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'

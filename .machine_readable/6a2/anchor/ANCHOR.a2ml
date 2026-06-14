@@ -2,9 +2,18 @@
 # This is the canonical authority for the Skein.jl repository.
 
 id: "org.hyperpolymath.Skein.jl"
-version: "1.0.0"
-clade: "unknown"
+version: "1.2.0"
+clade: "fv"        # Julia-vocabulary clade (authoritative in CLADE.a2ml)
 status: "active"
+
+# Mission
+mission: "A knot-theoretic database for Julia — the persistence + semantic-indexing layer (layer 4) of the KRL stack. Stores knots/tangles as records with computed topological invariants and serves KRL's Retrieve operation (indexed lookup by invariant: jones, crossing, genus, ...). KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve), NOT a query language; QuandleDB is the Resolve layer. The 'maths analogue of a graph database' is the user's aspirational framing, not a committed implementation — see the grounding note."
+
+# Grounding (2026-06) — supersedes the earlier graph-DB "realignment"
+grounding:
+  date: "2026-06-14"
+  role: "Skein is layer 4 (persistence + semantic indexing) of the KRL stack. It serves the Retrieve leg (indexed store) and persists knot/tangle records; QuandleDB is the Resolve layer. See .machine_readable/6a2/ECOSYSTEM.a2ml."
+  withdrawn: "An earlier draft proposed a typed knot-relationship (edge) layer + traversal (connected-sum DAG, skein triples L+/L-/L0, mutation/crossing-change; schema v5). That was authored on a MISTAKEN 'KRL = query language' model and is WITHDRAWN. Skein-relation resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer, not necessarily Skein's persistence layer. Any edge/traversal or schema change must be re-grounded against the KRL 4-layer architecture first."
 
 # SSG Configuration (Unified boj-server build)
 ssg:

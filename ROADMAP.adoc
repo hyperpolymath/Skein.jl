@@ -30,6 +30,32 @@
 * [x] Julia General registry compatibility (compat bounds for all deps)
 * [x] 493 tests passing
 
+== Current focus — Skein in the KRL stack (layer 4: persistence + semantic indexing)
+
+Skein.jl is the persistence + semantic-indexing layer (layer 4) of the KRL
+stack. KRL = Knot Resolution Language (Construct / Transform / Resolve /
+Retrieve) — *not* a query language. Skein serves KRL's **Retrieve** leg
+(indexed store: find where `jones = p`, where `crossing < 8`) and persists
+knot/tangle records; QuandleDB is the **Resolve** layer. See
+`.machine_readable/6a2/ECOSYSTEM.a2ml`.
+
+* [ ] Alexander polynomial (standalone, via the PD / `pd_code` route)
+* [ ] Consolidate the Retrieve surface (range/set/meta predicates, pagination, statistics) against the KRL Retrieve spec
+* [ ] Green `Pkg.test()` baseline in CI (the `AcceleratorGate` path-dep must be resolvable in the test env)
+
+[NOTE]
+====
+*Withdrawn (2026-06):* an earlier draft made the "current focus" a realignment
+of Skein into a knot *graph* database — a typed knot-relationship (edge) layer +
+traversal (`knot_relations` table, connected-sum factorisation DAG, skein
+triples L+/L-/L0, mutation/crossing-change; schema v5). That was authored on a
+mistaken "KRL = query language" model and is withdrawn. Skein-relation
+resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer,
+not necessarily Skein's persistence layer. The "maths analogue of a graph
+database" remains the user's aspirational framing; any edge/traversal or schema
+change must first be re-grounded against the KRL 4-layer architecture.
+====
+
 == v0.3.0 (Planned)
 
 * [ ] Julia General registry submission
