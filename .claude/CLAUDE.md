@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Skein.jl — Project Instructions
 
 ## Overview
@@ -14,7 +18,7 @@ database" is the user's aspirational framing; the earlier "typed knot-relation e
 layer + traversal (schema v5)" realignment was authored on a mistaken "KRL = query
 language" model and is WITHDRAWN pending re-grounding against the KRL 4-layer
 architecture. See `.machine_readable/6a2/ECOSYSTEM.a2ml`, `ROADMAP.adoc`, and
-`.machine_readable/anchors/ANCHOR.a2ml`.
+`.machine_readable/6a2/anchor/ANCHOR.a2ml`.
 
 ## Build & Test
 
