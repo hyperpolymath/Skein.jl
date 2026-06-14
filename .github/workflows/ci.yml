@@ -40,5 +40,14 @@ jobs:
           git clone --depth 1 https://github.com/hyperpolymath/AcceleratorGate.jl.git ../AcceleratorGate.jl
           git clone --depth 1 https://github.com/hyperpolymath/KnotTheory.jl.git ../KnotTheory.jl
 
+      # The committed Manifest.toml was resolved with Julia 1.12 and pins stdlib
+      # versions (JuliaSyntaxHighlighting 1.12.0, StyledStrings) that are
+      # UNSATISFIABLE on the 1.10/1.11 matrix. Pkg.resolve() can't fix it — it
+      # preserves those pins. So discard the stale manifest and re-create it fresh
+      # for this Julia version, devving the unregistered estate path-deps.
+      # (Pkg.develop on the KnotTheory weakdep only sets its source path; it does
+      #  NOT promote it to a hard dep — Project.toml is unchanged.)
       - name: Install, build, test
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.build(); Pkg.test()'
+        run: |
+          rm -f Manifest.toml
+          julia --project=. -e 'using Pkg; Pkg.develop([PackageSpec(path="../AcceleratorGate.jl"), PackageSpec(path="../KnotTheory.jl")]); Pkg.instantiate(); Pkg.build(); Pkg.test()'
