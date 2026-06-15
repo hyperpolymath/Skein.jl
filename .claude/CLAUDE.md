@@ -62,4 +62,4 @@ julia --project=. -e 'using Pkg; Pkg.resolve()'
 <!-- REUSE-IgnoreEnd -->
 - SCM files in `.machine_readable/` ONLY
 - Tests must pass before any commit
-- Author: `Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>`
+- Author: `Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>`
