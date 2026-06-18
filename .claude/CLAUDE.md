@@ -10,15 +10,23 @@ Skein.jl is a knot-theoretic database for Julia. It stores knots as Gauss codes,
 computes invariants on insert (Jones polynomial, genus, Seifert circles), and
 provides querying by those invariants.
 
-Grounded role: Skein.jl is the persistence + semantic-indexing layer (layer 4) of
-the KRL stack. KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve),
-*not* a query language. Skein serves KRL's Retrieve leg (indexed store) and persists
-knot/tangle records; QuandleDB is the Resolve layer. The "maths analogue of a graph
-database" is the user's aspirational framing; the earlier "typed knot-relation edge
-layer + traversal (schema v5)" realignment was authored on a mistaken "KRL = query
-language" model and is WITHDRAWN pending re-grounding against the KRL 4-layer
-architecture. See `.machine_readable/6a2/ECOSYSTEM.a2ml`, `ROADMAP.adoc`, and
-`.machine_readable/6a2/anchor/ANCHOR.a2ml`.
+Grounded role: Skein.jl is the computational/backend engine of the KRL stack — the
+library that computes, transforms, normalizes, and evaluates knot/tangle invariants
+(Jones, genus, Seifert circles) and equivalence checks, with an embedded SQLite store
+for what it computes. KRL = Knot Resolution Language (Construct/Transform/Resolve/
+Retrieve), a resolution DSL — *not merely* a query language. QuandleDB is the database
+application that wraps Skein and is the canonical persistence + invariant/equivalence
+face. The four KRL operations run against the QuandleDB+Skein substrate; no single op
+maps 1:1 to a component (Skein is *not* "the Retrieve leg"). KRL's Retrieve recovers
+resolution-relevant artefacts (presentations, invariants, witnesses, equivalence
+classes, prior resolutions, explanations, provenance), *not* arbitrary querying;
+generic query access over Skein's store is a legitimate engine-layer affordance. The
+"maths analogue of a graph database" is the user's aspirational framing; the earlier
+"typed knot-relation edge layer + traversal (schema v5)" realignment was authored on a
+mistaken "KRL = query language" model and is WITHDRAWN pending re-grounding against
+the KRL architecture. See `.machine_readable/6a2/ECOSYSTEM.a2ml`,
+`.machine_readable/6a2/anchor/ANCHOR.a2ml`, and krl
+`docs/decisions/0002-query-language-deferred.adoc`.
 
 ## Build & Test
 

@@ -7,12 +7,12 @@ clade: "fv"        # Julia-vocabulary clade (authoritative in CLADE.a2ml)
 status: "active"
 
 # Mission
-mission: "A knot-theoretic database for Julia — the persistence + semantic-indexing layer (layer 4) of the KRL stack. Stores knots/tangles as records with computed topological invariants and serves KRL's Retrieve operation (indexed lookup by invariant: jones, crossing, genus, ...). KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve), NOT a query language; QuandleDB is the Resolve layer. The 'maths analogue of a graph database' is the user's aspirational framing, not a committed implementation — see the grounding note."
+mission: "A knot-theoretic database library for Julia — the computational/backend engine of the KRL stack. Computes, transforms, normalizes, and evaluates knot/tangle invariants (Jones, genus, Seifert circles) and equivalence checks, with an embedded SQLite store for what it computes. KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve), a resolution DSL — NOT merely a query language. QuandleDB is the database application that wraps Skein and is the canonical persistence + invariant/equivalence face. The four KRL operations run against the QuandleDB+Skein substrate; no single op maps 1:1 to a component (Skein is not 'the Retrieve leg'). Generic query access over Skein's store is a legitimate engine-layer affordance. The 'maths analogue of a graph database' is the user's aspirational framing, not a committed implementation — see the grounding note."
 
 # Grounding (2026-06) — supersedes the earlier graph-DB "realignment"
 grounding:
-  date: "2026-06-14"
-  role: "Skein is layer 4 (persistence + semantic indexing) of the KRL stack. It serves the Retrieve leg (indexed store) and persists knot/tangle records; QuandleDB is the Resolve layer. See .machine_readable/6a2/ECOSYSTEM.a2ml."
+  date: "2026-06-18"
+  role: "Skein is the computational/backend engine of the KRL stack — it computes/transforms/normalizes/evaluates invariants and equivalence checks and carries an embedded SQLite store. QuandleDB is the database application that wraps Skein (persistence + invariant/equivalence face). The four KRL ops are operations run against the substrate, not component labels — Skein is NOT 'the Retrieve leg'. Retrieve recovers resolution-relevant artefacts, not arbitrary queries; generic store access is an engine-layer affordance. See .machine_readable/6a2/ECOSYSTEM.a2ml and krl docs/decisions/0002-query-language-deferred.adoc."
   withdrawn: "An earlier draft proposed a typed knot-relationship (edge) layer + traversal (connected-sum DAG, skein triples L+/L-/L0, mutation/crossing-change; schema v5). That was authored on a MISTAKEN 'KRL = query language' model and is WITHDRAWN. Skein-relation resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer, not necessarily Skein's persistence layer. Any edge/traversal or schema change must be re-grounded against the KRL 4-layer architecture first."
 
 # SSG Configuration (Unified boj-server build)

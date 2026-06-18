@@ -5,24 +5,24 @@
 [metadata]
 project = "Skein.jl"
 version = "0.1.0"
-last-updated = "2026-06-14"
+last-updated = "2026-06-18"
 status = "active"
 
 [project-context]
 name = "Skein.jl"
 completion-percentage = 75
-phase = "Beta — persistence + semantic-indexing layer (layer 4) of the KRL stack"
+phase = "Beta — computational/backend engine of the KRL stack (compute + embedded store)"
 
 [capabilities]
 storage = "SQLite backend, schema v4 (WAL mode), invariants auto-computed on insert; PD-native fields (diagram_format, canonical_diagram, pd_code)"
 invariants-standalone = "crossing_number, writhe, gauss_hash, Jones (<=15 crossings), genus, Seifert circles, canonical diagram"
 invariants-with-knottheory = "Alexander, determinant, signature via ext/KnotTheoryExt.jl"
-retrieve = "keyword (exact/range/set/meta) + composable & / | predicates; equivalence (find_equivalents, find_isotopic), duplicates, statistics, pagination. (This is KRL's Retrieve leg — one of four KRL operations.)"
+retrieve = "keyword (exact/range/set/meta) + composable & / | predicates; equivalence (find_equivalents, find_isotopic), duplicates, statistics, pagination. (Engine-layer query access over the embedded store; KRL's Retrieve operation recovers resolution-relevant artefacts and runs against the QuandleDB+Skein substrate — Skein is not 'the Retrieve leg'.)"
 data = "KnotInfo/Rolfsen import through 8 crossings; prime-knot table through 7 (knot_table.jl); CSV/JSON; DT-to-Gauss"
 tests = "1089 tests, all passing (test/runtests.jl + e2e / property / canonical / knot-theory-ext; verified green 2026-06-14)"
 
 [current-focus]
-direction = "Knot database as the maths analogue of a graph database (user framing). Skein = persistence + semantic-indexing layer of the KRL stack."
+direction = "Knot database as the maths analogue of a graph database (user framing). Skein = computational/backend engine of the KRL stack; QuandleDB = the persistence + invariant/equivalence database that wraps it."
 
 [withdrawn]
 # An earlier draft of this checkpoint proposed a Skein 'typed knot-relationship
@@ -42,4 +42,4 @@ alexander-standalone = "Alexander polynomial not computed standalone (needs PD/c
 julia-1_9 = "test (1.9) fails at Pkg.instantiate (dependency requires >= 1.10)"
 
 [notes]
-ecosystem = "Skein = persistence + semantic-indexing (layer 4) of the KRL stack; KRL = Knot Resolution Language (NOT a query language); QuandleDB = Resolve layer. See 6a2/ECOSYSTEM.a2ml."
+ecosystem = "Skein = computational/backend engine of the KRL stack; QuandleDB = persistence + invariant/equivalence database (wraps Skein); KRL = Knot Resolution Language, a resolution DSL (NOT merely a query language). The four KRL ops run against the substrate, not 1:1 to components. See 6a2/ECOSYSTEM.a2ml."
