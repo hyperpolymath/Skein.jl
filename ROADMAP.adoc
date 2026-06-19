@@ -30,14 +30,19 @@
 * [x] Julia General registry compatibility (compat bounds for all deps)
 * [x] 493 tests passing
 
-== Current focus — Skein in the KRL stack (layer 4: persistence + semantic indexing)
+== Current focus — Skein in the KRL stack (computational/backend engine)
 
-Skein.jl is the persistence + semantic-indexing layer (layer 4) of the KRL
-stack. KRL = Knot Resolution Language (Construct / Transform / Resolve /
-Retrieve) — *not* a query language. Skein serves KRL's **Retrieve** leg
-(indexed store: find where `jones = p`, where `crossing < 8`) and persists
-knot/tangle records; QuandleDB is the **Resolve** layer. See
-`.machine_readable/6a2/ECOSYSTEM.a2ml`.
+Skein.jl is the *computational / backend engine* of the KRL stack — it
+computes, transforms, normalizes, and evaluates invariants and equivalence
+checks, with an embedded SQLite store. KRL = Knot Resolution Language
+(Construct / Transform / Resolve / Retrieve), a resolution DSL — *not merely* a
+query language. *QuandleDB* is the database application that wraps Skein and is
+the canonical persistence + invariant/equivalence face. The four KRL operations
+run against the QuandleDB+Skein substrate; no single op maps 1:1 to a component
+(Skein is *not* "the Retrieve leg"). Generic query access over the store
+(find where `jones = p`, where `crossing < 8`) is an engine-layer affordance.
+See `.machine_readable/6a2/ECOSYSTEM.a2ml` and krl
+`docs/decisions/0002-query-language-deferred.adoc`.
 
 * [ ] Alexander polynomial (standalone, via the PD / `pd_code` route)
 * [ ] Consolidate the Retrieve surface (range/set/meta predicates, pagination, statistics) against the KRL Retrieve spec
