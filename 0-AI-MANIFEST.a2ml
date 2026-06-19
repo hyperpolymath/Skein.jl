@@ -2,7 +2,7 @@
 ; 0-AI-MANIFEST.a2ml — Skein.jl
 
 [ai-contract]
-purpose = "Knot-theoretic database for Julia — the persistence + semantic-indexing layer (layer 4) of the KRL stack. Stores knots/tangles as records with computed topological invariants and serves KRL's Retrieve operation. KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve), NOT a query language; QuandleDB is the Resolve layer."
+purpose = "Knot-theoretic database engine for Julia — the computational/backend engine of the KRL stack. Computes/transforms/normalizes/evaluates invariants and equivalence checks, with an embedded SQLite store. QuandleDB is the database application that wraps Skein (persistence + invariant/equivalence face). KRL = Knot Resolution Language (Construct/Transform/Resolve/Retrieve), a resolution DSL — NOT merely a query language. The four KRL ops run against the substrate, not 1:1 to components (Skein is not 'the Retrieve leg')."
 agent-may = "edit src/, test/, docs/, CHANGELOG.md, ROADMAP.adoc, .machine_readable/6a2/"
 agent-may-not = "edit LICENSE / SECURITY.md without explicit user confirmation; add KnotTheory.jl as a hard dependency (weakdep only); resurrect the withdrawn 'knot graph database / typed knot-relation edge layer / schema v5' framing (see .machine_readable/6a2/STATE.a2ml) without re-grounding against the KRL 4-layer architecture"
 agent-must-after = "code-edit -> real Pkg.test() run (tests must pass before commit)"

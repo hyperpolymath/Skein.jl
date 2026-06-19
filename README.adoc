@@ -8,7 +8,7 @@
 image:https://img.shields.io/badge/Project-Topology-9558B2[Topology,link="TOPOLOGY.md"]
 image:https://img.shields.io/badge/Completion-75%25-yellow[75%,link="TOPOLOGY.md"]
 
-A knot-theoretic database for Julia. Store, index, and query knots by their topological invariants.
+A knot-theoretic database engine for Julia. Store, index, and query knots by their topological invariants.
 
 image:https://img.shields.io/badge/Julia-1.10+-blue.svg[Julia 1.10+]
 image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices,link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/Skein.jl"]
@@ -26,6 +26,19 @@ Named after the https://en.wikipedia.org/wiki/Skein_relation[skein relation] —
 Works standalone, or as a persistence layer on top of https://github.com/hyperpolymath/KnotTheory.jl[KnotTheory.jl].
 
 For explicit layer boundaries and interop guarantees, see link:INTEGRATION.adoc[INTEGRATION.adoc].
+
+[NOTE]
+====
+*Role in the KRL stack.* Skein.jl is the *computational / backend engine* of the
+https://github.com/hyperpolymath/krl[KRL] (Knot Resolution Language) stack: it
+computes, transforms, normalizes, and evaluates invariants and equivalence checks,
+with an embedded SQLite store. *QuandleDB* is the database application that wraps
+Skein and is the canonical persistence + invariant/equivalence face. The four KRL
+operations (construct / transform / resolve / retrieve) run against the
+QuandleDB+Skein substrate — no single op maps to one component. Generic query access
+here is an engine-layer affordance; KRL itself is a resolution DSL, *not merely* a
+query language.
+====
 
 == Quick start
 
