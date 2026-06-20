@@ -1,0 +1,195 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= AFFIRMATION — Skein.jl, as of 2026-06-19
+:toc: macro
+:toclevels: 2
+
+_the No-Bullshit file: what we affirm was true and checkable at this moment_
+
+[NOTE]
+====
+*Genre.* An *affirmation* is a solemn declaration of the truth of a statement,
+made by someone who _declines to swear an oath_ — our truth-as-best-believed at
+a stamped instant, binding on our honesty, not a claim of infallibility. It is
+not the README and not the EXPLAINME:
+
+[cols="1,3,2",options="header"]
+|===
+| File | Answers | Tense
+| `README.adoc` | _Where is this going, and why?_ — Skein.jl's purpose and steering | future / aspirational
+| `EXPLAINME.adoc` | _How is it built, and what's the evidence?_ | descriptive / mechanism
+| *`AFFIRMATION.adoc`* (this file) | _What can we honestly affirm was *true and checkable* at a stamped moment?_ | a frozen instant, falsifiable
+|===
+
+Every repo in the estate carries one, per the 2026-06-19 estate rule.
+====
+
+toc::[]
+
+== What this is, and how it is designed to work
+
+*What it is.* A short, dated, jointly-signed snapshot of what we can _honestly
+and verifiably_ claim about the Skein.jl repo at one exact commit.
+
+*How it is designed to work.*
+
+. *Ground truth, not memory.* Every gate result below was produced by _running
+  the check this session_. *Material caveat (read it):* `just` is absent, so the
+  `contractiles/` Must/Trust logic was run *as bash*; and *`julia` is absent*, so
+  the Julia package and its test suite **were not executed** — see
+  <<Outstanding / not-run>>.
+. *A frozen anchor.* The file names the exact commit SHA, branch, and toolchain
+  (see <<Verifiable anchor>>).
+. *A real signature.* Authoritatively landed by the maintainer's *signed git
+  commit*. The AI engineering party *cannot* GPG-sign and does not claim to.
+
+*We are fallible.* Best honest belief, not a proof of its own correctness.
+
+== The epistemic contract
+
+This document records our *best joint belief* at the timestamp below. *No
+intentional overclaim:* where a check passed we say "PASS"; where the toolchain
+was *absent* we say "not run", never "passed"; where the repo self-grades low we
+report that grade.
+
+*Standing invitation to refute.* Reproduce <<reproduce>> at the stamped commit
+and tell us where the discrepancy is.
+
+== Verifiable anchor
+
+[cols="1,3"]
+|===
+| *Repo*        | `hyperpolymath/Skein.jl` — the *computational / backend engine* of the KRL stack (computes invariants + equivalence checks; embedded SQLite store)
+| *Branch*      | `claude/practical-newton-9eFe2` (feature branch, based on the current `origin/main` which already carries the merged #20 grounding + #21 CI work)
+| *Commit (HEAD)* | `ac5daca08a59dc70ae2e5b5da49d44d311601c25`
+| *Permalink*   | https://github.com/hyperpolymath/Skein.jl/tree/ac5daca08a59dc70ae2e5b5da49d44d311601c25
+| *Verified*    | 2026-06-19 (checks run this session; precise UTC second not captured — date, not claimed instant)
+| *Working-tree delta* | Clean (`git status --porcelain` empty) at verification, except this untracked `AFFIRMATION.adoc`.
+| *Toolchain (present)* | `git`, `Agda 2.6.3`. *Absent this session:* `just`, `julia`, `deno`.
+| *Run method*  | `contractiles/` Must/Trust logic + RSR checks run as bash. *Julia package/tests not executed* (no `julia`).
+| *HEAD commit signature* | *Not signed by the AI party.* Authoritative signature is the maintainer's signed commit that lands this file.
+|===
+
+== Companion documents and repo metadata (cross-check)
+
+* *`README.adoc`* — present and *cleanly instantiated*: title `= Skein.jl`.
+* *`EXPLAINME.adoc`* — present and *cleanly instantiated*: `= Skein.jl — Show Me
+  The Receipts`.
+* *`Project.toml`* — `name = "Skein"`, `version = "0.3.1"`.
+* *`0-AI-MANIFEST.a2ml`* — present. *REUSE-compliant* (`REUSE.toml` + `LICENSES/`).
+* *Template residue* — *2 files* with `{{PLACEHOLDER}}` tokens; *6 files*
+  reference the `rsr-template-repo` lineage. The `Justfile` itself is clean.
+  Minor instantiation debt — noted, not hidden.
+* *GitHub repo description / topics* — *not fetched this session* (no `gh`).
+
+== The honest state (one breath)
+
+Skein.jl is a *real, shipping* Julia knot-theory engine — `Skein` v0.3.1, ~2522
+lines across `src/` (`types`, `polynomials`, `invariants`, `storage`, `query`,
+`import_export`, `knot_table`, plus `abi/` and `backends/`), *13 package
+extensions* (accelerator backends: CUDA / Metal / ROCm / TPU / NPU / FPGA / QPU /
+VPU / PPU / DSP / Math / Crypto / KnotTheory), and a real test suite. It is the
+*computational/backend engine* of the KRL stack (grounding merged in #20), is
+cleanly instantiated and REUSE-compliant, and the `MUST`/`TRUST` gates pass. The
+honest limits are about *assurance*, not scaffolding: it self-grades READINESS
+*C*, its storage obligations are *example/property-tested* rather than proven, and
+*its Julia test suite was not run this session* (no `julia`).
+
+== What is solid (and how we checked)
+
+* *MUST/TRUST-style checks — PASS.* Run as bash from `contractiles/`: LICENSE
+  present; no banned `Dockerfile`/`Makefile`; SPDX headers on a sampled 150 `.jl`
+  files (0 unheadered); LICENSE carries an SPDX/MPL identifier; no `.env` /
+  `credentials.json` committed.
+* *Clean instantiation + REUSE compliance.* README + EXPLAINME carry the real
+  project name; `REUSE.toml` + `LICENSES/` present.
+* *Real, substantial content.* A working Julia engine: `src/Skein.jl` plus the
+  invariant/persistence modules (~2522 lines); 13 `ext/Skein*Ext.jl` package
+  extensions; a real test tree (`test/runtests.jl`, `canonical_gauss_test.jl`,
+  `e2e_test.jl`, `knot_theory_ext_test.jl`, `property_test.jl`). This is shipped
+  engineering at version 0.3.1, not a template skeleton.
+
+== Known-incomplete but honestly fenced (loud, never silent)
+
+* *READINESS grade `C`.* `READINESS.md` self-assesses *Current Grade: C* —
+  reported as-is.
+* *Obligations are tested, not proved.* `PROOF-NEEDS.md` records the storage/
+  schema obligations as *"tested by example; not proved for arbitrary
+  databases"*, *"tested for each filter type … no exhaustive [proof]"*, *"tested
+  on small examples"*. No claim of formal proof.
+* *The 13 accelerator extensions are present as code, not exercised here.* Their
+  existence is a fact; functional acceleration on real hardware/packages is *not*
+  something this session verified.
+* *Minor residue:* 2 `{{PLACEHOLDER}}` files + 6 `rsr-template-repo` references.
+
+== Outstanding / not-run (no spin) [[Outstanding / not-run]]
+
+* *The Julia test suite was NOT executed this session.* `julia` is absent, so
+  `test/runtests.jl` and friends were *not run* (the package's own docs cite an
+  ~1089-test baseline; this session did not reproduce it). We affirm the test
+  *files exist*; we do *not* affirm, from this session, that they currently pass.
+  A `julia --project=. -e 'using Pkg; Pkg.test()'` run in-environment (with the
+  sibling path-deps `../AcceleratorGate.jl` + `../KnotTheory.jl`) is the
+  authoritative confirmation.
+* *Accelerator extensions* require their respective backends/hardware and were
+  not loaded or tested.
+
+== Reproduce it yourself [[reproduce]]
+
+From the repo root, at the commit above:
+
+[source,bash]
+----
+git rev-parse HEAD          # expect ac5daca08a59dc70ae2e5b5da49d44d311601c25
+git status --porcelain      # expect only this untracked AFFIRMATION.adoc
+
+# MUST / TRUST style (expect PASS):
+test -f LICENSE; test ! -f Dockerfile -a ! -f Makefile
+grep -q 'SPDX\|MPL' LICENSE; test ! -f .env
+
+# Real content present:
+grep -E '^name|^version' Project.toml ; ls src/ ext/ test/
+
+# NOT verifiable without julia (the honest gap):
+#   julia --project=. -e 'using Pkg; Pkg.test()'   # needs julia + sibling path-deps
+----
+
+== One-line characterisation (quote this)
+
+"Skein.jl is the computational/backend engine of the KRL stack — a real shipping
+Julia package (`Skein` v0.3.1; ~2522 lines across types/polynomials/invariants/
+storage/query; 13 accelerator package-extensions; REUSE-compliant; a real test
+tree the docs cite at ~1089 tests) that self-grades READINESS `C` with example/
+property-tested (not formally proven) storage obligations. `MUST`/`TRUST` gates
+pass and it is essentially clean of template residue (2 placeholder files, 6
+`rsr-template-repo` references). Honest gap: `julia` is absent this session, so
+the test suite was *not run* — files exist, pass-state unconfirmed here; and the
+13 accelerator extensions are present as code, not exercised. No intentional
+overclaim."
+
+== Key concern + cross-repo wiring
+
+Skein.jl's *key concern* is being the *computational / backend engine* — it
+computes, transforms, normalises, and evaluates invariants and equivalence
+checks, with an embedded SQLite store; QuandleDB wraps it as the canonical
+persistence + invariant/equivalence face. Per the 2026-06-19 estate rule, each
+repo carries its own AFFIRMATION + scoped Must/Intend/Wish table; Skein.jl's lives
+at `docs/identity-fabric/musts-intends-wishes.adoc`. Confirmed stack: *krl*
+(surface DSL) → *tangle* (TangleIR + type-safe core) → *VerisimCore* (categorical
+abstraction) → *Skein.jl* (this engine) / *quandledb* (storage + equivalence
+face). Adjacent: *echo-types* — structured-loss theory + the identity-fabric
+framing. The withdrawn knot-graph-edge-layer (schema v5) guardrail is retained.
+
+== Joint attestation
+
+To the best of our joint belief at the timestamp above, every claim in this file
+is true and was checked as described — with no intentional overclaim and with the
+un-run Julia suite stated rather than hidden.
+
+* *Engineering party (AI):* ran the gate/RSR checks recorded here as bash on
+  2026-06-19 and stands behind this wording as a faithful report, including the
+  explicit `julia`-absent caveat (test suite not reproduced this session).
+* *Owner / maintainer:* Jonathan D.A. Jewell — signs by committing this file with
+  `-S`; the signed git commit over this content, at the SHA above, is the
+  authoritative form.
+* *Signed-off-date:* (fill on signing)
