@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Skein.jl — Normative Scope (Must / Intend / Wish)
+:toc: preamble
+:revdate: 2026-06-19
+
+[abstract]
+Per-repo normative-scope record for Skein.jl (the computational / backend engine
+of the KRL stack). Estate rule (2026-06-19): every repo carries its own scoped
+table; crossover content is duplicated and marked until resolved, then wired into
+the other relevant repos. `◇` marks proposals not yet canonical.
+
+== Confirmed stack placement (2026-06-19)
+
+[literal]
+krl (surface DSL) → tangle (TangleIR + type-safe core) → VerisimCore (categorical
+abstraction) → Skein.jl (this engine) / quandledb (storage + equivalence face)
+
+Skein.jl is the *engine*, not a KRL "leg" — the four KRL ops run against the
+QuandleDB+Skein substrate (no op↔component 1:1 mapping; grounding merged in #20).
+
+== Levels
+
+* *MUST* — required to be what it is (RFC 2119 normative).
+* *INTEND* — committed direction.
+* *WISH* — aspirational.
+
+== Skein.jl (own)
+
+[cols="1,5", options="header"]
+|===
+| Level | Skein.jl
+
+| *MUST*
+| Be the *computational / backend engine* — compute / transform / normalise /
+  evaluate knot invariants (Jones, genus, Seifert circles) and equivalence
+  checks (R1/R2, Jones comparison), with an *embedded* SQLite store; store knots
+  as Gauss codes and auto-compute invariants on insert; honest engine grounding
+  (engine, *not* the "Retrieve leg"); SPDX/REUSE compliance on all files; the
+  test baseline (~1089 tests) green before any commit.
+
+| *INTEND*
+| Raise READINESS above `C`; strengthen the storage/schema obligations from
+  *example/property-tested* toward proof where tractable (`PROOF-NEEDS.md`); keep
+  KnotTheory.jl a *weakdep only* (never a hard dependency); clear the residual
+  template debt (2 `{{PLACEHOLDER}}` files, 6 `rsr-template-repo` references);
+  mature the 13 accelerator extensions (CUDA/Metal/ROCm/TPU/NPU/FPGA/QPU/VPU/PPU/
+  DSP) from present-as-code toward exercised-and-benchmarked ◇.
+
+| *WISH*
+| Broader invariant coverage (e.g. Alexander polynomial — *not* implemented;
+  needs crossing-chirality data absent from basic Gauss codes); a re-grounded
+  next schema version (the v5 knot-relation edge layer was *withdrawn* —
+  mis-grounded on "KRL = query"; no committed next schema until re-grounded
+  against the 4-layer stack); real hardware-accelerated invariant computation ◇.
+|===
+
+== Cross-repo wiring
+
+Skein.jl is the *compute substrate*. QuandleDB wraps it as the canonical
+persistence + invariant/equivalence face; the four KRL operations run against the
+QuandleDB+Skein substrate. The load-bearing shared invariant across the stack is
+*equivalence-integrity* (the `a = a` idem core) — Skein.jl is where equivalence
+is *actually computed and checked*.
+
+Sibling repos' key concerns (keep in sync as crossover resolves): *krl* — the
+resolution DSL surface; *tangle* — TangleIR + type-safe core; *quandledb* —
+equivalence / identity face (wraps this engine; holds the canonical QuandleDB/KRL
+crossover table); *echo-types* — structured-loss theory + the identity-fabric
+framing (Conway·Fichte / Bruner / Ricoeur). See `../../AFFIRMATION.adoc`.
