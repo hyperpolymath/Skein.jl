@@ -1,5 +1,5 @@
 <!--
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 # Skein.jl — Project Instructions
@@ -66,7 +66,7 @@ julia --project=. -e 'using Pkg; Pkg.resolve()'
 ## Critical Invariants
 
 <!-- REUSE-IgnoreStart -->
-- All files must have `SPDX-License-Identifier: MPL-2.0` header
+- All files must have `SPDX-License-Identifier: CC-BY-SA-4.0` header
 <!-- REUSE-IgnoreEnd -->
 - SCM files in `.machine_readable/` ONLY
 - Tests must pass before any commit
