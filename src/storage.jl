@@ -463,6 +463,54 @@ function row_to_record(db::SkeinDB, row)::KnotRecord
     )
 end
 
+# -- Index management --
+
+"""
+    create_index!(db::Union{SkeinDB, SQLite.DB}, table::String, column::String, kind::Symbol = :btree)
+
+Create an index on a specific column. `kind` can be `:btree` (default).
+"""
+function create_index!(db::SkeinDB, table::String, column::String, kind::Symbol = :btree)
+    db.readonly && error("Database is read-only")
+    create_index!(db.conn, table, column, kind)
+end
+
+function create_index!(conn::SQLite.DB, table::String, column::String, kind::Symbol = :btree)
+    kind == :btree || error("Unsupported index kind: $kind")
+    index_name = "idx_$(table)_$(column)"
+    DBInterface.execute(conn, "CREATE INDEX IF NOT EXISTS $index_name ON $table($column)")
+    nothing
+end
+
+"""
+    drop_index!(db::Union{SkeinDB, SQLite.DB}, index_name::String)
+
+Drop an index by name.
+"""
+function drop_index!(db::SkeinDB, index_name::String)
+    db.readonly && error("Database is read-only")
+    drop_index!(db.conn, index_name)
+end
+
+function drop_index!(conn::SQLite.DB, index_name::String)
+    DBInterface.execute(conn, "DROP INDEX IF EXISTS $index_name")
+    nothing
+end
+
+"""
+    list_indices(db::Union{SkeinDB, SQLite.DB}, table::String) -> Vector{String}
+
+List all index names for a given table.
+"""
+function list_indices(db::SkeinDB, table::String)::Vector{String}
+    list_indices(db.conn, table)
+end
+
+function list_indices(conn::SQLite.DB, table::String)::Vector{String}
+    result = DBInterface.execute(conn, "PRAGMA index_list($table)")
+    [string(row[:name]) for row in result]
+end
+
 # -- Schema migration helpers --
 
 function _get_schema_version(conn::SQLite.DB)::Int
