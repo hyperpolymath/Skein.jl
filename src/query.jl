@@ -46,7 +46,7 @@ Query knots by invariant values. Supported keyword arguments:
 - `limit`: Int (default 100)
 - `offset`: Int (default 0)
 """
-function query(db::SkeinDB;
+function _build_query_sql(;
                crossing_number = nothing,
                writhe = nothing,
                genus = nothing,
@@ -59,7 +59,7 @@ function query(db::SkeinDB;
                name_like = nothing,
                meta = nothing,
                limit::Int = 100,
-               offset::Int = 0)::Vector{KnotRecord}
+               offset::Int = 0)
 
     conditions = String[]
     params = Any[]
@@ -140,8 +140,34 @@ function query(db::SkeinDB;
     push!(params, limit)
     push!(params, offset)
 
+    (sql, params)
+end
+
+function query(db::SkeinDB; kwargs...)::Vector{KnotRecord}
+    sql, params = _build_query_sql(; kwargs...)
     result = DBInterface.execute(db.conn, sql, params)
     [row_to_record(db, row) for row in result]
+end
+
+"""
+    explain(db::SkeinDB; kwargs...) -> Vector{Dict}
+
+Explain the query plan for a set of query parameters.
+Returns a vector of dictionaries, each representing a row of SQLite's EXPLAIN QUERY PLAN output.
+"""
+function explain(db::SkeinDB; kwargs...)::Vector{Dict}
+    sql, params = _build_query_sql(; kwargs...)
+    result = DBInterface.execute(db.conn, "EXPLAIN QUERY PLAN " * sql, params)
+    
+    rows = Dict[]
+    for row in result
+        d = Dict{String, Any}()
+        for col in propertynames(row)
+            d[string(col)] = getproperty(row, col)
+        end
+        push!(rows, d)
+    end
+    rows
 end
 
 # -- Condition builders for different value types --
