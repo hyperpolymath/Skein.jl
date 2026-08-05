@@ -11,3 +11,20 @@ agent-must-after = "code-edit -> real Pkg.test() run (tests must pass before com
 breaking-changes = "open ADR; respect 6a2/META.a2ml decisions"
 schema-change = "re-ground against the KRL 4-layer architecture first; do not resurrect the withdrawn edge-layer v5"
 schema-drift-in-6a2 = "Open issue against hyperpolymath/standards; do not silently reshape this repo's 6a2 files"
+
+<!-- BEGIN requires-initialisation -->
+
+## PRIORITY ACTION — this repository is not fully initialised
+
+8 substitution token(s) still have no value. **Read
+`REQUIRES_INITIALISATION.md` in the repository root before doing anything
+else here** — it lists every outstanding token, what it means, and which
+files it belongs in.
+
+Do not fabricate values for them, and do not delete the sections that
+contain them to quiet a gate. They are unfilled because they need a
+decision, not because they were overlooked. Resolve what you legitimately
+can, leave the rest, and delete `REQUIRES_INITIALISATION.md` only when
+nothing outstanding remains.
+
+<!-- END requires-initialisation -->
