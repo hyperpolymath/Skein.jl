@@ -3,12 +3,6 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.2'
 workflows:
-    '.github/workflows/governance.yml': []
-    '.github/workflows/hypatia-scan.yml': []
-    '.github/workflows/label-triage.yml': []
-    '.github/workflows/labels.yml': []
-    '.github/workflows/mirror.yml': []
-    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/boj-build.yml':
         - 'actions/checkout@v4.1.7'
     '.github/workflows/casket-pages.yml':
@@ -25,16 +19,22 @@ workflows:
     '.github/workflows/codeql.yml':
         - 'actions/checkout@v4.4.0'
         - 'github/codeql-action@v4.37.2'
+    '.github/workflows/governance.yml': []
     '.github/workflows/guix-nix-policy.yml':
         - 'actions/checkout@v6.0.2'
+    '.github/workflows/hypatia-scan.yml': []
     '.github/workflows/instant-sync.yml':
         - 'peter-evans/repository-dispatch@v4.0.1'
+    '.github/workflows/label-triage.yml': []
+    '.github/workflows/labels.yml': []
+    '.github/workflows/mirror.yml': []
     '.github/workflows/push-email-notify.yml':
-        - 'dawidd6/action-send-mail@v3.12.0'
+        - 'hyperpolymath/smtp-notify-action@v0.2.0'
     '.github/workflows/rsr-antipattern.yml':
         - 'actions/checkout@v6.0.2'
     '.github/workflows/runtime-policy.yml':
         - 'actions/checkout@v6.0.2'
+    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/security-policy.yml':
         - 'actions/checkout@v6.0.2'
     '.github/workflows/wellknown-enforcement.yml':
@@ -89,11 +89,6 @@ dependencies:
         repo_id: 496012378
         uses:
             - 'actions/upload-artifact@v4'
-    'dawidd6/action-send-mail@v3.12.0':
-        ref: 'v3.12.0'
-        commit: 'sha1-6e502825a508b867ab2954ad6343b68787624c01'
-        owner_id: 9713907
-        repo_id: 222439721
     'github/codeql-action@v4.37.2':
         ref: 'v4.37.2'
         commit: 'sha1-e0647621c2984b5ed2f768cb892365bf2a616ad1'
@@ -104,6 +99,11 @@ dependencies:
         commit: 'sha1-ec49483bfc012387b227434aba94f59a6ecd0900'
         owner_id: 75048950
         repo_id: 623796603
+    'hyperpolymath/smtp-notify-action@v0.2.0':
+        ref: 'v0.2.0'
+        commit: 'sha1-ede1191ef6ff3ac02c4f4d9efdf837ee517e11d7'
+        owner_id: 6759885
+        repo_id: 1352485172
     'julia-actions/cache@v3.0.1':
         ref: 'v3.0.1'
         commit: 'sha1-e97f6fc1a6e21c82253c85e269be7340376aa425'
