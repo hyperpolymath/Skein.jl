@@ -5,8 +5,8 @@
 :toc: macro
 :toclevels: 2
 
-image:https://img.shields.io/badge/Project-Topology-9558B2[Topology,link="TOPOLOGY.md"]
-image:https://img.shields.io/badge/Completion-75%25-yellow[75%,link="TOPOLOGY.md"]
+image:https://img.shields.io/badge/Project-Topology-9558B2[Topology,link="TOPOLOGY.adoc"]
+image:https://img.shields.io/badge/Completion-75%25-yellow[75%,link="TOPOLOGY.adoc"]
 
 A knot-theoretic database engine for Julia. Store, index, and query knots by their topological invariants.
 
@@ -29,15 +29,12 @@ For explicit layer boundaries and interop guarantees, see link:INTEGRATION.adoc[
 
 [NOTE]
 ====
-*Role in the KRL stack.* Skein.jl is the *computational / backend engine* of the
-https://github.com/hyperpolymath/krl[KRL] (Knot Resolution Language) stack: it
-computes, transforms, normalizes, and evaluates invariants and equivalence checks,
-with an embedded SQLite store. *QuandleDB* is the database application that wraps
-Skein and is the canonical persistence + invariant/equivalence face. The four KRL
-operations (construct / transform / resolve / retrieve) run against the
-QuandleDB+Skein substrate — no single op maps to one component. Generic query access
-here is an engine-layer affordance; KRL itself is a resolution DSL, *not merely* a
-query language.
+*Project boundaries.* Skein.jl is an independent Julia library for knot storage, indexing and invariant
+computation. KnotTheory.jl is a separate mathematical toolkit. QuandleDB uses
+these libraries and implements its KRL resolution-language fragment, but does not
+define the libraries' purpose. Tangle is a separate Turing-complete language for
+knot mathematics. Shared subject matter creates no KRL-to-Tangle compilation
+pipeline and transfers no proof guarantee.
 ====
 
 == Quick start
