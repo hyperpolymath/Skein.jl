@@ -25,11 +25,11 @@ jobs:
         # macos-latest dropped 2026-06-19: macOS runner minutes exhausted -> ci.yml
         # startup_failure blocked merges; ubuntu covers the matrix. Restore when available.
     steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: julia-actions/setup-julia@v2.7.0
+      - uses: actions/checkout@v7.0.1
+      - uses: julia-actions/setup-julia@v3.0.2
         with:
           version: ${{ matrix.julia-version }}
-      - uses: julia-actions/cache@v3.0.1
+      - uses: julia-actions/cache@v3.3.0
 
       # Skein depends on the estate packages AcceleratorGate.jl (hard dep) and
       # KnotTheory.jl (weakdep) as adjacent path-deps — Manifest.toml pins
