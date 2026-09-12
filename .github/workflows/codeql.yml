@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
 # For most projects, this workflow file will not need changing; you simply need
@@ -52,8 +53,9 @@ jobs:
         include:
         - language: actions
           build-mode: none
-        - language: c-cpp
-          build-mode: autobuild
+        # The native implementation is Zig; the generated C header is an ABI
+        # declaration, not a C/C++ build target. CodeQL covers Actions here.
+        # Julia behaviour is exercised by ci.yml; no Julia/Zig analysis is claimed.
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both

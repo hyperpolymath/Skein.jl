@@ -37,6 +37,8 @@ workflows:
     '.github/workflows/secret-scanner.yml': []
     '.github/workflows/security-policy.yml':
         - 'actions/checkout@v6.0.2'
+    '.github/workflows/verification-image.yml':
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/wellknown-enforcement.yml':
         - 'actions/checkout@v6.0.2'
     '.github/workflows/workflow-linter.yml':
@@ -65,6 +67,11 @@ dependencies:
     'actions/checkout@v6.0.2':
         ref: 'v6.0.2'
         commit: 'sha1-de0fac2e4500dabe0009e67214ff5f5447ce83dd'
+        owner_id: 44036562
+        repo_id: 197814629
+    'actions/checkout@v7.0.1':
+        ref: 'v7.0.1'
+        commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
         owner_id: 44036562
         repo_id: 197814629
     'actions/configure-pages@v5.0.0':
