@@ -29,6 +29,7 @@ workflows:
         - 'peter-evans/repository-dispatch@v4.0.1'
     '.github/workflows/label-triage.yml': []
     '.github/workflows/labels.yml': []
+    '.github/workflows/lock-sync-gate.yml': []
     '.github/workflows/mirror.yml':
         - 'hyperpolymath/standards@d5fe075a50ab3ce4f41614d66ed77f152fda134f'
     '.github/workflows/push-email-notify.yml':
