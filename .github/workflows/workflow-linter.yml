@@ -34,20 +34,13 @@ jobs:
           failed=0
           for file in .github/workflows/*.yml .github/workflows/*.yaml; do
             [ -f "$file" ] || continue
-            # Scan the header comment block, NOT line 1. `gh actions-lock`
-            # inserts "# This workflow is managed by gh actions-lock." at line
-            # 1 whenever it mints a lockfile, so a line-1 test fights the
-            # estate's own tool and re-fails on every lockfile refresh
-            # (measured 2026-08-07; see standards governance-reusable.yml for
-            # the canonical check this step mirrors).
-            if ! awk '/^---[[:space:]]*$/ { next } /^#/ { print; next } { exit }' "$file" \
-                 | grep -q "^# SPDX-License-Identifier:"; then
-              echo "ERROR: $file missing SPDX header in its leading comment block"
+            if ! head -1 "$file" | grep -q "^# SPDX-License-Identifier:"; then
+              echo "ERROR: $file missing SPDX header"
               failed=1
             fi
           done
           if [ $failed -eq 1 ]; then
-            echo "Add '# SPDX-License-Identifier: MPL-2.0' within the leading comment block"
+            echo "Add '# SPDX-License-Identifier: MPL-2.0' as first line"
             exit 1
           fi
           echo "All workflows have SPDX headers"
