@@ -55,7 +55,7 @@ perfective = 10   # % for SPDX headers, doc updates, formatting, style
 # Customise this per project — the template default is generic.
 
 [methodology.unique-strength]
-description = "{{PROJECT_UNIQUE_STRENGTH}}"
+description = "The only Julia package that treats knot storage as a database problem: content-addressed Gauss-code deduplication, automatic invariant computation and indexing on insert, composable &/| query predicates, diagram-equivalence search, and a versioned forward-migrating schema — standalone, with KnotTheory.jl integration as a pure package extension."
 deepen-not-broaden = true
 
 # ============================================================================

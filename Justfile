@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 # List all available recipes
-import? "contractile.just"
+
 
 default:
     @just --list
@@ -124,7 +124,7 @@ tour:
     echo "  ext/                      Package extensions (KnotTheory.jl integration)"
     echo "  test/                     Test suite"
     echo "  .github/workflows/        CI/CD workflows"
-    echo "  contractiles/             Must/Trust/Dust contracts"
+    echo "  .machine_readable/contractiles/   Must/Trust/Dust contracts"
     echo "  .machine_readable/        Machine-readable metadata"
     echo "  examples/                 Usage examples"
     echo ""

@@ -5,19 +5,26 @@
 :revdate: 2026-06-19
 
 [abstract]
-Per-repo normative-scope record for Skein.jl (the computational / backend engine
-of the KRL stack). Estate rule (2026-06-19): every repo carries its own scoped
-table; crossover content is duplicated and marked until resolved, then wired into
-the other relevant repos. `◇` marks proposals not yet canonical.
+Per-repo normative-scope record for Skein.jl (a standalone knot-database
+library for Julia; see docs/decisions/ADR-0001 for the 2026-09-26 one-master
+re-grounding, which supersedes the 2026-06-19 "engine of the KRL stack"
+framing). Estate rule (2026-06-19): every repo carries its own scoped table.
+`◇` marks proposals not yet canonical.
 
-== Confirmed stack placement (2026-06-19)
+== Placement (re-grounded 2026-09-26, ADR-0001)
 
 [literal]
-krl (surface DSL) → tangle (TangleIR + type-safe core) → VerisimCore (categorical
-abstraction) → Skein.jl (this engine) / quandledb (storage + equivalence face)
+consumers:  quandledb (storage + equivalence face; hosts krl)   tangle (separate language)
+                │  consumes as a library                            │  no pipeline
+                ▼                                                   ▼
+            Skein.jl — standalone knot-database library (this repo)
+                │  optional weakdep
+                ▼
+            KnotTheory.jl — computation toolkit (extension trigger)
 
-Skein.jl is the *engine*, not a KRL "leg" — the four KRL ops run against the
-QuandleDB+Skein substrate (no op↔component 1:1 mapping; grounding merged in #20).
+The 2026-06-19 "computational/backend engine of the KRL stack" placement is
+withdrawn: consumption defines neither purpose nor architecture
+(INTEGRATION.adoc).
 
 == Levels
 
@@ -32,39 +39,43 @@ QuandleDB+Skein substrate (no op↔component 1:1 mapping; grounding merged in #2
 | Level | Skein.jl
 
 | *MUST*
-| Be the *computational / backend engine* — compute / transform / normalise /
-  evaluate knot invariants (Jones, genus, Seifert circles) and equivalence
-  checks (R1/R2, Jones comparison), with an *embedded* SQLite store; store knots
-  as Gauss codes and auto-compute invariants on insert; honest engine grounding
-  (engine, *not* the "Retrieve leg"); SPDX/REUSE compliance on all files; the
-  test baseline (~1089 tests) green before any commit.
+| Be a *standalone, dependency-lean knot database* — store knots as Gauss
+  codes (or canonical planar diagrams via the KnotTheory weakdep extension),
+  auto-compute and index invariants (Jones, genus, Seifert circles) on insert,
+  and answer invariant/equivalence queries (R1/R2, Jones comparison) over an
+  embedded SQLite store; stay pure Julia (no ABI/FFI seam, no coprocessor
+  backends — ADR-0001); SPDX/REUSE compliance on all files; the test suite
+  green before any commit.
 
 | *INTEND*
 | Raise READINESS above `C`; strengthen the storage/schema obligations from
-  *example/property-tested* toward proof where tractable (`PROOF-NEEDS.md`); keep
-  KnotTheory.jl a *weakdep only* (never a hard dependency); clear the residual
-  template debt (2 `{{PLACEHOLDER}}` files, 6 `rsr-template-repo` references);
-  mature the 13 accelerator extensions (CUDA/Metal/ROCm/TPU/NPU/FPGA/QPU/VPU/PPU/
-  DSP) from present-as-code toward exercised-and-benchmarked ◇.
+  *example/property-tested* toward proof where tractable (`PROOF-NEEDS.adoc`);
+  keep KnotTheory.jl a *weakdep only* (never a hard dependency); register on
+  the General registry (install by name, not url). Template debt cleared
+  2026-09-26: the `{{PLACEHOLDER}}` files are filled and the accelerator
+  extensions were removed as vestigial (Dustfile.a2ml), not matured.
 
 | *WISH*
-| Broader invariant coverage (e.g. Alexander polynomial — *not* implemented;
-  needs crossing-chirality data absent from basic Gauss codes); a re-grounded
-  next schema version (the v5 knot-relation edge layer was *withdrawn* —
-  mis-grounded on "KRL = query"; no committed next schema until re-grounded
-  against the 4-layer stack); real hardware-accelerated invariant computation ◇.
+| Broader invariant coverage (e.g. Alexander polynomial standalone — *not*
+  implemented; needs crossing-chirality data absent from basic Gauss codes);
+  a re-grounded next schema version (the v5 knot-relation edge layer was
+  *withdrawn* — mis-grounded on "KRL = query"; no committed next schema until
+  re-grounded against Skein's own storage requirements); a measured, benchmarked
+  fast path for bracket computation on large diagrams ◇.
 |===
 
 == Cross-repo wiring
 
-Skein.jl is the *compute substrate*. QuandleDB wraps it as the canonical
-persistence + invariant/equivalence face; the four KRL operations run against the
-QuandleDB+Skein substrate. The load-bearing shared invariant across the stack is
-*equivalence-integrity* (the `a = a` idem core) — Skein.jl is where equivalence
-is *actually computed and checked*.
+Skein.jl is an *independent library* whose diagram-equivalence machinery
+(`canonical_gauss`, `is_equivalent`, `find_equivalents`) is the part consumers
+rely on most. *QuandleDB* wraps it as the persistence + invariant/equivalence
+face of the KRL tooling; *KRL* is a resolution DSL implemented in QuandleDB;
+*Tangle* is a separate knot-mathematics language with no compilation pipeline
+to Skein. Consumption transfers no schema, purpose or proof guarantee.
 
-Sibling repos' key concerns (keep in sync as crossover resolves): *krl* — the
-resolution DSL surface; *tangle* — TangleIR + type-safe core; *quandledb* —
-equivalence / identity face (wraps this engine; holds the canonical QuandleDB/KRL
-crossover table); *echo-types* — structured-loss theory + the identity-fabric
-framing (Conway·Fichte / Bruner / Ricoeur). See `../../AFFIRMATION.adoc`.
+Sibling repos' key concerns (consumer context, keep in sync as crossover
+resolves): *krl* — the resolution DSL surface; *tangle* — TangleIR +
+type-safe core; *quandledb* — equivalence / identity face (holds the canonical
+QuandleDB/KRL crossover table); *echo-types* — structured-loss theory +
+the identity-fabric framing. See `../../AFFIRMATION.adoc` and
+`../../INTEGRATION.adoc`.

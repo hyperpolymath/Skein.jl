@@ -26,12 +26,10 @@ migration path from v3
 
 ==== Blocks B (6+ diverse external targets)
 
-* No JuliaHub registration yet.
+* No JuliaHub/General registry entry yet (install is `Pkg.add(url=...)`).
 * No external users outside hyperpolymath ecosystem have exercised the
 storage layer.
 * No external bug reports.
-* PROOF-NEEDS.md not yet written (storage schemas have obligations that
-would benefit from formal statement).
 
 ==== Blocks A
 
@@ -40,11 +38,12 @@ would benefit from formal statement).
 === What to do for B
 
 [arabic]
-. Register on JuliaHub.
+. Register on the Julia General registry.
 . Find 6+ diverse external targets — knot researchers with existing knot
 datasets who would benefit from indexed invariant storage.
 . Ship their feedback as fixes; track the 6 targets here.
-. Write PROOF-NEEDS.md for schema migrations and query-result contracts.
+. Deepen PROOF-NEEDS.adoc (written 2026-06) for schema migrations and
+query-result contracts.
 
 === Review cycle
 
