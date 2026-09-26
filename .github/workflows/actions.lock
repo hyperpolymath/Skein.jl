@@ -136,15 +136,6 @@ dependencies:
         commit: 'sha1-22e7bdb322c430c1d0dac6b3bb307f4bb139d0be'
         owner_id: 6759885
         repo_id: 1352485172
-    'hyperpolymath/standards@d5fe075a50ab3ce4f41614d66ed77f152fda134f':
-        ref: 'd5fe075a50ab3ce4f41614d66ed77f152fda134f'
-        commit: 'sha1-d5fe075a50ab3ce4f41614d66ed77f152fda134f'
-        owner_id: 6759885
-        repo_id: 1116521501
-        uses:
-            - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-            - 'dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772'
-            - 'webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555'
     'hyperpolymath/standards@2479cf769ed5f0481ccf64860a2ab954514c2b59':
         ref: '2479cf769ed5f0481ccf64860a2ab954514c2b59'
         commit: 'sha1-2479cf769ed5f0481ccf64860a2ab954514c2b59'
@@ -156,6 +147,15 @@ dependencies:
             - 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'
             - 'erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124'
             - 'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63'
+    'hyperpolymath/standards@d5fe075a50ab3ce4f41614d66ed77f152fda134f':
+        ref: 'd5fe075a50ab3ce4f41614d66ed77f152fda134f'
+        commit: 'sha1-d5fe075a50ab3ce4f41614d66ed77f152fda134f'
+        owner_id: 6759885
+        repo_id: 1116521501
+        uses:
+            - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
+            - 'dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772'
+            - 'webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555'
     'hyperpolymath/standards@fcb566cfb8a86cea2d3666bf65a4f177a49b1313':
         ref: 'fcb566cfb8a86cea2d3666bf65a4f177a49b1313'
         commit: 'sha1-fcb566cfb8a86cea2d3666bf65a4f177a49b1313'
