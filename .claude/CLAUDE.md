@@ -20,14 +20,15 @@ pipeline and transfers no proof guarantee.
 ## Build & Test
 
 ```bash
-# Run tests (1089 tests, ~20s; needs sibling path-deps ../AcceleratorGate.jl + ../KnotTheory.jl)
-julia --project=. -e 'using Pkg; Pkg.test()'
+# Run tests (needs Julia 1.10+; KnotTheory.jl is an unregistered weakdep, so
+# dev it once for the test target — this does NOT make it a hard dependency)
+git clone --depth 1 https://github.com/hyperpolymath/KnotTheory.jl.git ../KnotTheory.jl
+julia --project=. -e 'using Pkg; Pkg.develop(path="../KnotTheory.jl"); Pkg.test()'
 
 # Run benchmarks
 julia --project=. benchmark/benchmarks.jl
 
-# Resolve dependencies
-julia --project=. -e 'using Pkg; Pkg.resolve()'
+# Manifest.toml is NOT committed; every environment resolves its own graph.
 ```
 
 ## Architecture
@@ -39,8 +40,13 @@ julia --project=. -e 'using Pkg; Pkg.resolve()'
 - **src/query.jl** — Keyword queries + composable predicates (`&`, `|`) including genus
 - **src/import_export.jl** — CSV/JSON export, KnotInfo import (36 knots through 8 crossings), DT-to-Gauss conversion, bulk import
 - **src/knot_table.jl** — Hardcoded prime-knot table through 7 crossings (`prime_knot`, `prime_knots`)
-- **src/backends/abstract.jl** — Abstract storage-backend interface
-- **ext/KnotTheoryExt.jl** — Package extension for KnotTheory.jl integration
+- **ext/KnotTheoryExt.jl** — Package extension for KnotTheory.jl integration (PD-native storage, cached Alexander/Jones/determinant/signature)
+
+There are no other extensions. The former accelerator extensions
+(CUDA/Metal/ROCm/TPU/QPU/NPU/VPU/PPU/FPGA/DSP/Crypto/Math), the
+AcceleratorGate dependency, and the Idris2/Zig ABI/FFI seam were vestigial
+scaffolding removed in 0.4.0 — see ADR-0001 (docs/decisions/) and
+.machine_readable/rsr-profile.a2ml before considering anything similar.
 
 ## Key Patterns
 
@@ -50,7 +56,8 @@ julia --project=. -e 'using Pkg; Pkg.resolve()'
 - **Schema migration**: `_get_schema_version` + `_migrate_vN_to_vM` pattern (v1→v2→v3→v4); a proposed v5 "knot-relation edge layer" was withdrawn (mis-grounded on "KRL = query") — no committed next schema version until specified against Skein’s own storage requirements
 - **Base extensions**: `Base.delete!`, `Base.haskey`, `Base.close`, `Base.isopen` — extend, don't re-export
 - **Auto-computed invariants**: `store!` auto-computes Jones (≤15 crossings), genus, and Seifert circles
-- **Alexander polynomial**: NOT implemented — requires crossing chirality data not in basic Gauss codes
+- **Alexander polynomial**: NOT implemented standalone — requires crossing chirality data not in basic Gauss codes; WITH KnotTheory.jl loaded it is computed from the planar diagram by the extension
+- **One master**: Skein serves general Julia knot-database users; QuandleDB/KRL/Tangle are consumers (ADR-0001). Do not add KRL/Tangle/QuandleDB-specific types, schema, or vocabulary here
 
 ## Critical Invariants
 

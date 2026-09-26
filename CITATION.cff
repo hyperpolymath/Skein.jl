@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Jewell"
+    given-names: "Jonathan D.A."
+    email: "j.d.a.jewell@open.ac.uk"
+    alias: "hyperpolymath"
+title: "Skein.jl"
+version: 0.4.0
+date-released: "2026-09-26"
+url: "https://github.com/hyperpolymath/Skein.jl"
+repository-code: "https://github.com/hyperpolymath/Skein.jl"
+license: MPL-2.0
+keywords:
+  - "julia"
+  - "knot-theory"
+  - "knot-invariants"
+  - "database"
+  - "sqlite"
+  - "topology"

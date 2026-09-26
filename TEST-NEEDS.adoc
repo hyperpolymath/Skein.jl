@@ -40,10 +40,10 @@
 
 === Priority: P3 (LOW) – well tested with benchmark
 
-=== FAKE-FUZZ ALERT
+=== FAKE-FUZZ ALERT — RESOLVED 2026-09-26
 
-* `+tests/fuzz/placeholder.txt+` is a scorecard placeholder inherited
-from rsr-template-repo — it does NOT provide real fuzz testing
-* Replace with an actual fuzz harness (see
-rsr-template-repo/tests/fuzz/README.adoc) or remove the file
-* Priority: P2 — creates false impression of fuzz coverage
+* [x] `+tests/fuzz/placeholder.txt+` (a scorecard placeholder inherited from
+rsr-template-repo that created a false impression of fuzz coverage) removed.
+Genuine property-based testing lives in `+test/property_test.jl+
+(`+Random+`-seeded); no fuzz harness is claimed. If real fuzzing is wanted,
+grow it from an explicit harness with CI — do not re-add placeholder dirs.

@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: MPL-2.0
 # STATE.a2ml — Project state checkpoint
-# Refreshed 2026-06-05; corrected re: KRL paradigm (resolution, not query)
+# Refreshed 2026-09-26; one-master re-grounding per ADR-0001 (docs/decisions/)
 
 [metadata]
 project = "Skein.jl"
-version = "0.1.0"
-last-updated = "2026-06-18"
+version = "0.4.0"
+last-updated = "2026-09-26"
 status = "active"
 
 [project-context]
 name = "Skein.jl"
 completion-percentage = 75
-phase = "Beta — computational/backend engine of the KRL stack (compute + embedded store)"
+phase = "Beta — standalone knot-database library for Julia (storage + invariants + queries); QuandleDB/KRL are consumers, not its purpose (ADR-0001)"
 
 [capabilities]
 storage = "SQLite backend, schema v4 (WAL mode), invariants auto-computed on insert; PD-native fields (diagram_format, canonical_diagram, pd_code)"
@@ -22,24 +22,30 @@ data = "KnotInfo/Rolfsen import through 8 crossings; prime-knot table through 7 
 tests = "1089 tests, all passing (test/runtests.jl + e2e / property / canonical / knot-theory-ext; verified green 2026-06-14)"
 
 [current-focus]
-direction = "Knot database as the maths analogue of a graph database (user framing). Skein = computational/backend engine of the KRL stack; QuandleDB = the persistence + invariant/equivalence database that wraps it."
+direction = "Knot database as the maths analogue of a graph database (owner framing). Skein serves ONE master — general Julia users who want knot storage/indexing/querying; QuandleDB/KRL/Tangle consume it from their own repos. The 2026-06 'engine of the KRL stack' self-description is superseded by ADR-0001 (docs/decisions/ADR-0001-skein-serves-one-master.adoc)."
 
 [withdrawn]
-# An earlier draft of this checkpoint proposed a Skein 'typed knot-relationship
-# edge layer + traversal (connected-sum DAG, skein triples)'. That was authored
-# on a MISTAKEN 'KRL = query language' model and is WITHDRAWN. KRL is the Knot
-# Resolution Language (Construct/Transform/Resolve/Retrieve); skein-relation
-# resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer,
-# NOT necessarily to Skein's persistence layer. Any Skein evolution must be
-# re-grounded against the KRL 4-layer architecture (see 6a2/ECOSYSTEM.a2ml)
-# before a schema change. ANCHOR/META/ROADMAP/CLAUDE.md were re-authored to the
-# grounded model on 2026-06-14 (this checkpoint); the withdrawn edge-layer framing
-# no longer appears as a committed direction in any canonical doc.
+# (1) An earlier draft of this checkpoint proposed a Skein 'typed
+# knot-relationship edge layer + traversal (connected-sum DAG, skein triples)'.
+# That was authored on a MISTAKEN 'KRL = query language' model and is WITHDRAWN.
+# No committed next schema version until specified against Skein's own storage
+# requirements.
+#
+# (2) WITHDRAWN 2026-09-26 (ADR-0001): the 'computational/backend engine of the
+# KRL stack' role, the AcceleratorGate.jl hard dependency + twelve accelerator
+# package extensions, and the Idris2/Zig ABI/FFI seam (src/abi/, ffi/zig/,
+# generated/abi/) — AI cross-contamination from the RSR template and the
+# Axiom/AcceleratorGate estate. Nothing in src/, test/, benchmark/ or any
+# downstream consumer ever called them; nine of twelve extensions were not
+# even declared in Project.toml [extensions] and could never load. The estate's
+# Template-Applicability-Policy (standards 0-canon) classifies all of it as
+# VESTIGIAL. Re-adding any of it requires declaring the capability in
+# .machine_readable/rsr-profile.a2ml with justification and CI that exercises it.
 
 [open]
-test-baseline = "RESOLVED 2026-06-14 — GREEN: real Pkg.test() = 1089/1089 pass (20.3s, exit 0). Root cause was environmental: the path-deps AcceleratorGate.jl (hard) + KnotTheory.jl (weakdep) must be checked out as siblings at ../ (Manifest pins path = ../AcceleratorGate.jl / ../KnotTheory.jl). ci.yml now clones both before instantiate so the baseline reproduces in CI. No Skein source/Manifest change was needed."
+test-baseline = "CI Julia 1.10 + 1.11 matrix green on main (2026-09-25 run 36199547359). Since 0.4.0 the package installs standalone: KnotTheory.jl is weakdep-only again and the only environment prep is dev-ing that one unregistered weakdep for the test target. Manifest.toml is no longer committed (it pinned 1.12 stdlibs unsatisfiable on the 1.10/1.11 matrix)."
 alexander-standalone = "Alexander polynomial not computed standalone (needs PD/chirality; pd_code field enables a route)"
 julia-1_9 = "test (1.9) fails at Pkg.instantiate (dependency requires >= 1.10)"
 
 [notes]
-ecosystem = "Skein = computational/backend engine of the KRL stack; QuandleDB = persistence + invariant/equivalence database (wraps Skein); KRL = Knot Resolution Language, a resolution DSL (NOT merely a query language). The four KRL ops run against the substrate, not 1:1 to components. See 6a2/ECOSYSTEM.a2ml."
+ecosystem = "Skein.jl = standalone knot-database library (this repo). QuandleDB = the in-estate application that wraps Skein for persistence + invariant/equivalence queries and hosts the KRL resolution-language implementation. KnotTheory.jl = the computation toolkit behind the optional extension. Tangle = a separate knot-mathematics language; no compilation pipeline connects it to Skein. Consumption does not transfer purpose, schema or proof guarantees (INTEGRATION.adoc, ADR-0001)."

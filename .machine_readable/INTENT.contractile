@@ -35,38 +35,54 @@
 
   ; === Purpose (what this repo IS) ===
   (purpose
-    "{{ONE_PARAGRAPH_PURPOSE}}"
+    "Skein.jl is a lightweight, standalone database layer for knot theory in
+    Julia: store knots as Gauss codes (or, with the optional KnotTheory.jl
+    extension loaded, as canonical planar diagrams), have their invariants
+    computed and indexed automatically on insert, then query, compare,
+    import and export them through a small composable API. It exists for
+    Julia users who want knot persistence and retrieval to be a solved
+    problem — whether they arrive from research, teaching, or from another
+    package that needs a knot store."
   )
 
   ; === Anti-Purpose (what this repo is NOT — prevents scope creep) ===
   (anti-purpose
-    "{{ONE_PARAGRAPH_ANTI_PURPOSE}}"
-    ; Examples:
-    ; "This is NOT a general-purpose database — it solves one specific problem."
-    ; "This is NOT a framework — it is a library with a focused API."
-    ; "This does NOT handle authentication — that is delegated to [other repo]."
+    "Skein.jl is NOT the KRL stack's engine, substrate or 'compute leg': KRL,
+    QuandleDB and Tangle are separate projects that CONSUME this library (see
+    INTEGRATION.adoc), and shared knot theory transfers no architecture,
+    schema or proof guarantee between them. It is NOT a general-purpose
+    database engine — the schema is knot-shaped by design. It is NOT an FFI/ABI
+    showcase or a coprocessor/accelerator demo: the Idris2/Zig seam and the
+    CUDA/Metal/ROCm/TPU/QPU/NPU/VPU/PPU/FPGA/DSP/Crypto/Math extensions were
+    vestigial scaffolding and were removed (ADR-0001, rsr-profile.a2ml).
+    It does NOT aim to replace KnotTheory.jl — it persists and caches what
+    KnotTheory computes."
   )
 
   ; === Key Architectural Decisions That Must Not Be Reversed ===
   (architectural-invariants
-    ; *REMINDER: List the foundational decisions*
-    ; ("Idris2 for ABI definitions — dependent types prove interface correctness")
-    ; ("Zig for FFI — zero-cost C ABI compatibility")
-    ; ("Elixir for supervision — OTP fault tolerance")
+    ("Pure Julia over SQLite.jl — no C ABI seam, no coprocessor backends (ADR-0001)")
+    ("KnotTheory.jl is a weakdep loaded via a package extension — never a hard dependency (adr-weakdep, 6a2/META.a2ml)")
+    ("SQLite schema is versioned and forward-migrating (v1..v4); schema_version never decreases")
+    ("Jones polynomial comes from the Kauffman bracket on canonical planar diagrams, never from bare Gauss codes (adr-jones-from-pd, 6a2/META.a2ml)")
+    ("No KRL/Tangle-specific types or schema: consumers adapt Skein, never the reverse")
   )
 
   ; === Sensitive Areas (if in doubt, ask) ===
   (ask-before-touching
-    ; *REMINDER: List areas where LLMs should check before modifying*
-    ; "src/abi/ — formal proofs, changes require re-verification"
-    ; "ffi/zig/ — C ABI boundary, changes affect all language bindings"
-    ; ".machine_readable/ — checkpoint files, format is specified"
+    "src/storage.jl schema + migrations — a schema change must be re-grounded
+    against this repo's own storage requirements and come with a forward
+    migration"
+    ".machine_readable/6a2/ — estate checkpoint files; drift is an
+    escalation, not an edit (see 0-AI-MANIFEST.a2ml)"
+    "Project.toml [deps] — adding a hard dependency, especially an estate
+    package (KnotTheory, AcceleratorGate, Axiom, ...), requires an ADR"
   )
 
   ; === Ecosystem Position ===
   (ecosystem
-    (belongs-to "{{MONOREPO_OR_STANDALONE}}")
-    (depends-on ("{{DEP1}}" "{{DEP2}}"))
-    (depended-on-by ("{{CONSUMER1}}" "{{CONSUMER2}}"))
+    (belongs-to "standalone (hyperpolymath estate member; see rsr-profile.a2ml)")
+    (depends-on ("SQLite.jl" "KnotTheory.jl (weakdep, extension trigger)"))
+    (depended-on-by ("QuandleDB" "knot researchers' scripts via Pkg.add(url=...)"))
   )
 )

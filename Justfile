@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 # List all available recipes
-import? "contractile.just"
+
 
 default:
     @just --list
@@ -75,10 +75,9 @@ doctor:
             FAIL=$((FAIL + 1))
         fi
     }
-    check "just"              just      "1.25" 
-    check "git"               git       "2.40" 
-    check "Zig"               zig       "0.13" 
-    check "Julia"             julia     "1.10" 
+    check "just"              just      "1.25"
+    check "git"               git       "2.40"
+    check "Julia"             julia     "1.10"
 # Optional tools
 if command -v panic-attack >/dev/null 2>&1; then
     echo "  [OK]   panic-attack — available"
@@ -121,15 +120,13 @@ tour:
     # REUSE-IgnoreEnd
     echo ""
     echo "Key directories:"
-    echo "  src/                      Source code" 
-    echo "  ffi/                      Foreign function interface (Zig)" 
-    echo "  src/abi/                  Idris2 ABI definitions" 
-    echo "  tests/                    Test suite" 
-    echo "  test/                     Test suite" 
-    echo "  .github/workflows/        CI/CD workflows" 
-    echo "  contractiles/             Must/Trust/Dust contracts" 
-    echo "  .machine_readable/        Machine-readable metadata" 
-    echo "  examples/                 Usage examples" 
+    echo "  src/                      Source code"
+    echo "  ext/                      Package extensions (KnotTheory.jl integration)"
+    echo "  test/                     Test suite"
+    echo "  .github/workflows/        CI/CD workflows"
+    echo "  .machine_readable/contractiles/   Must/Trust/Dust contracts"
+    echo "  .machine_readable/        Machine-readable metadata"
+    echo "  examples/                 Usage examples"
     echo ""
     echo "Quick commands:"
     echo "  just doctor    Check toolchain health"
@@ -158,16 +155,16 @@ echo "  just tour             Guided project tour"
 echo "  just default          List all recipes" 
 
 
-# Print the current CRG grade (reads from READINESS.md '**Current Grade:** X' line)
+# Print the current CRG grade (reads from READINESS.adoc '**Current Grade:** X' line)
 crg-grade:
-    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    @grade=$$(grep -oP '(?<=Current Grade:\*? )[A-FX]' READINESS.adoc 2>/dev/null | head -1); \
     [ -z "$$grade" ] && grade="X"; \
     echo "$$grade"
 
 # Generate a shields.io badge markdown for the current CRG grade
-# Looks for '**Current Grade:** X' in READINESS.md; falls back to X
+# Looks for '**Current Grade:** X' in READINESS.adoc; falls back to X
 crg-badge:
-    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    @grade=$$(grep -oP '(?<=Current Grade:\*? )[A-FX]' READINESS.adoc 2>/dev/null | head -1); \
     [ -z "$$grade" ] && grade="X"; \
     case "$$grade" in \
       A) color="brightgreen" ;; B) color="green" ;; C) color="yellow" ;; \

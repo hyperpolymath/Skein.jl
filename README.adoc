@@ -35,6 +35,12 @@ these libraries and implements its KRL resolution-language fragment, but does no
 define the libraries' purpose. Tangle is a separate Turing-complete language for
 knot mathematics. Shared subject matter creates no KRL-to-Tangle compilation
 pipeline and transfers no proof guarantee.
+
+*Scope.* Skein serves one master — Julia users who want knot storage, indexing,
+querying and equivalence checking (docs/decisions/ADR-0001). It is pure Julia
+over SQLite.jl: no C ABI/FFI seam, no coprocessor backends, and no
+KRL/Tangle/QuandleDB-specific schema. The declared shape lives in
+`.machine_readable/rsr-profile.a2ml`.
 ====
 
 == Quick start
@@ -124,9 +130,15 @@ Currently computed on insert (standalone, without KnotTheory.jl):
 
 | `gauss_hash`
 | SHA-256 of the Gauss code for deduplication
+
+| `jones_polynomial`
+| Jones polynomial via the Kauffman bracket (standalone route, small diagrams)
+
+| `genus`, `seifert_circles`
+| Seifert-surface genus and Seifert circle count
 |===
 
-With KnotTheory.jl loaded:
+With KnotTheory.jl loaded (computed from canonical planar diagrams):
 
 [cols="1,3"]
 |===
@@ -187,13 +199,19 @@ find_isotopic(db, g)      # same knot type
 [source,julia]
 ----
 using Pkg
-Pkg.add(url="https://gitlab.com/hyperpolymath/Skein.jl")
+Pkg.add(url="https://github.com/hyperpolymath/Skein.jl")
 ----
+
+Standalone by design: only SQLite.jl and small utility packages are required.
+KnotTheory.jl is an optional weak dependency — nothing to configure, its
+integration simply activates when you load both packages.
 
 == Ecosystem
 
-* https://github.com/hyperpolymath/KnotTheory.jl[KnotTheory.jl] — knot theory computation (planar diagrams, invariants, Reidemeister moves)
+* https://github.com/hyperpolymath/KnotTheory.jl[KnotTheory.jl] — knot theory computation (planar diagrams, invariants, Reidemeister moves); optional, activates the extension
 * **Skein.jl** (this package) — knot data persistence and querying
+* https://github.com/hyperpolymath/quandledb[QuandleDB] — in-estate consumer: wraps Skein for persistence + invariant/equivalence queries and hosts the KRL resolution-language implementation
+* https://github.com/hyperpolymath/tangle[Tangle] — a separate topological programming language for knot mathematics; no compilation pipeline connects it to Skein
 
 == Licence
 

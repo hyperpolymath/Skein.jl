@@ -5,5 +5,4 @@
 Contact: mailto:j.d.a.jewell@open.ac.uk
 Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: en
-Canonical: https://github.com/hyperpolymath/Skein.jl/.well-known/security.txt
-Policy: https://github.com/hyperpolymath/Skein.jl/blob/main/SECURITY.md
+Policy: https://github.com/hyperpolymath/Skein.jl/blob/main/SECURITY.adoc

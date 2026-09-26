@@ -20,3 +20,29 @@ todo-tracking = "tracked-in-issues"
 backup-before-destructive = true
 rollback-mechanism = "git-revert"
 data-retention-policy = "preserve-30-days"
+
+# ── Swept directions (DUST log) ──────────────────────────────────────────────
+# Record of abandoned directions and where their material went, so the audit
+# trail survives the removal (Dustfile semantics: retire behavior without
+# losing traceability).
+
+[[dust]]
+date = "2026-09-26"
+direction = "Coprocessor/accelerator backends (AcceleratorGate.jl hard dep + CUDA/Metal/ROCm/TPU/QPU/NPU/VPU/PPU/FPGA/DSP/Crypto/Math extensions + src/backends/)"
+why = "AI cross-contamination from the Axiom/AcceleratorGate estate. Nine of twelve extensions were never declared in Project.toml [extensions] and could never load; none was referenced by src/, test/, benchmark/ or any downstream consumer; AFFIRMATION 2026-06-19 already recorded them as 'present as code, not exercised'."
+where = "Removed outright; recoverable from git history (commit 'feat!: jettison the vestigial ABI/FFI/accelerator scaffolding'). AcceleratorGate.jl itself lives on in its own repo."
+revival-condition = "Declare an accelerator capability in rsr-profile.a2ml with a measured workload that needs it, plus CI that exercises the backend."
+
+[[dust]]
+date = "2026-09-26"
+direction = "Typed ABI/FFI seam (src/abi/ Idris2, ffi/zig/, generated/abi/skein.h, ABI-FFI-README.adoc)"
+why = "RSR-maximal template scaffolding copied into a pure-Julia library. Nothing in the repo built, tested or consumed it; no CI wired the Idris proofs; the Zig layer duplicated what SQLite.jl already does in Julia."
+where = "Removed outright; recoverable from git history at the same commit."
+revival-condition = "Declare abi/ffi capabilities in rsr-profile.a2ml with a named consumer that needs a C ABI from Skein, plus CI that builds and tests the seam."
+
+[[dust]]
+date = "2026-09-26"
+direction = "'Computational/backend engine of the KRL stack' role framing"
+why = "Role confusion between an independent library and its consumer (QuandleDB/KRL). Replaced by the one-master framing of ADR-0001."
+where = "Superseded in 0-AI-MANIFEST.a2ml, 6a2/STATE.a2ml, 6a2/META.a2ml, INTENT.contractile, docs/identity-fabric/musts-intends-wishes.adoc."
+revival-condition = "None — the consumption relationship is documented in INTEGRATION.adoc and does not need a role name."

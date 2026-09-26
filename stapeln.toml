@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: MPL-2.0
-# stapeln.toml — Layer-based container build for Skein.jl
+# stapeln.toml — container build declaration for Skein.jl
 #
-# stapeln builds containers as composable layers (German: "to stack").
-# Each layer is independently cacheable, verifiable, and signable.
+# Skein.jl is a library, not a service: the only image this repo builds is the
+# CI verification image defined in Containerfile (pinned Julia + the tests).
+# There is no runtime deployment target and no binary entrypoint; anything that
+# consumes Skein.jl does so from Julia, via Pkg.
 
 [metadata]
 name = "Skein.jl"
-version = "0.1.0"
-description = "Skein.jl"
+version = "0.4.0"
+description = "Knot-theoretic database engine for Julia"
 author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 license = "MPL-2.0"
 registry = "ghcr.io/hyperpolymath"
@@ -17,74 +19,11 @@ containerfile = "Containerfile"
 context = "."
 runtime = "podman"
 
-# ── Layer Definitions ──────────────────────────────────────────
-
-[layers.base]
-description = "Chainguard Wolfi minimal base"
-from = "cgr.dev/chainguard/wolfi-base:latest"
-cache = true
-verify = true
-
-[layers.toolchain]
-description = "Build tools and dependencies"
-extends = "base"
-packages = ["julia"]
-cache = true
-
-[layers.build]
-description = "Skein.jl build"
-extends = "toolchain"
-commands = ["julia --project=. -e \"using Pkg; Pkg.instantiate()\""]
-
-[layers.runtime]
-description = "Minimal runtime"
-from = "cgr.dev/chainguard/wolfi-base:latest"
-packages = ["ca-certificates", "curl"]
-copy-from = [
-    { layer = "build", src = "/app/", dst = "/app/" },
-]
-entrypoint = ["/app/bin/Skein.jl"]
-user = "nonroot"
-
-# ── Security ───────────────────────────────────────────────────
-
-[security]
-non-root = true
-read-only-root = false
-no-new-privileges = true
-cap-drop = ["ALL"]
-seccomp-profile = "default"
-
-[security.signing]
-algorithm = "ML-DSA-87"
-provider = "cerro-torre"
-
-[security.sbom]
-format = "spdx-json"
-output = "sbom.spdx.json"
-include-deps = true
-
 # ── Verification ──────────────────────────────────────────────
+# The image's whole job is to run Pkg.test() inside a pinned environment
+# (see .github/workflows/verification-image.yml, which runs it with
+# --network=none so the pin is actually exercised).
 
 [verify]
-vordr = true
-svalinn = true
-scan-on-build = true
-fail-on = ["critical", "high"]
-
-# ── Targets ───────────────────────────────────────────────────
-
-[targets.development]
-description = "Full development environment"
-layers = ["base", "toolchain", "build"]
-env = { LOG_LEVEL = "debug" }
-
-[targets.production]
-description = "Production deployment"
-layers = ["runtime"]
-env = { LOG_LEVEL = "info" }
-
-[targets.test]
-description = "Test environment"
-layers = ["base", "toolchain", "build"]
-env = { LOG_LEVEL = "debug" }
+run-tests = true
+network = "none"
