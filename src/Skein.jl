@@ -82,6 +82,5 @@ include("storage.jl")
 include("query.jl")
 include("import_export.jl")
 include("knot_table.jl")
-include("backends/abstract.jl")
 
 end # module Skein

@@ -31,24 +31,16 @@ jobs:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/cache@v3.3.0
 
-      # Skein depends on the estate packages AcceleratorGate.jl (hard dep) and
-      # KnotTheory.jl (weakdep) as adjacent path-deps — Manifest.toml pins
-      # path = "../AcceleratorGate.jl" and "../KnotTheory.jl". Neither is in a
-      # registry, so check them out as siblings before instantiate, otherwise
-      # Pkg.instantiate() fails with "AcceleratorGate ... required but not installed".
-      - name: Check out sibling estate path-deps
-        run: |
-          git clone --depth 1 https://github.com/hyperpolymath/AcceleratorGate.jl.git ../AcceleratorGate.jl
-          git clone --depth 1 https://github.com/hyperpolymath/KnotTheory.jl.git ../KnotTheory.jl
+      # KnotTheory.jl is a WEAKDEP (extension trigger) and is unregistered, so
+      # it must be devved from its estate repo for the test target to resolve.
+      # Pkg.develop only sets its source path; it does NOT promote it to a hard
+      # dependency — Project.toml is unchanged. Skein itself installs and loads
+      # standalone with no sibling checkouts.
+      - name: Dev unregistered weakdep (KnotTheory.jl)
+        run: git clone --depth 1 https://github.com/hyperpolymath/KnotTheory.jl.git ../KnotTheory.jl
 
-      # The committed Manifest.toml was resolved with Julia 1.12 and pins stdlib
-      # versions (JuliaSyntaxHighlighting 1.12.0, StyledStrings) that are
-      # UNSATISFIABLE on the 1.10/1.11 matrix. Pkg.resolve() can't fix it — it
-      # preserves those pins. So discard the stale manifest and re-create it fresh
-      # for this Julia version, devving the unregistered estate path-deps.
-      # (Pkg.develop on the KnotTheory weakdep only sets its source path; it does
-      #  NOT promote it to a hard dep — Project.toml is unchanged.)
+      # No Manifest.toml is committed (packages pin compat, not manifests), so
+      # each Julia version in the matrix resolves its own dependency graph.
       - name: Install, build, test
         run: |
-          rm -f Manifest.toml
-          julia --project=. -e 'using Pkg; Pkg.develop([PackageSpec(path="../AcceleratorGate.jl"), PackageSpec(path="../KnotTheory.jl")]); Pkg.instantiate(); Pkg.build(); Pkg.test()'
+          julia --project=. -e 'using Pkg; Pkg.develop(path="../KnotTheory.jl"); Pkg.instantiate(); Pkg.build(); Pkg.test()'
