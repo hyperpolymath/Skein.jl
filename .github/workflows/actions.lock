@@ -5,8 +5,10 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/ci.yml':
         - 'actions/checkout@v7.0.1'
-        - 'julia-actions/setup-julia@v3.0.2'
         - 'julia-actions/cache@v3.3.0'
+        - 'julia-actions/setup-julia@v3.0.2'
+    '.github/workflows/test.yml':
+        - 'actions/checkout@v7.0.1'
 dependencies:
     'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1':
         hostname: github.com
