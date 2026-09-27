@@ -1,6 +1,8 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # RSR Anti-Pattern CI Check
+# SPDX-License-Identifier: MPL-2.0
 #
 # Enforces: No TypeScript, No Go, No Python (except SaltStack), No npm
 # Allows: AffineScript, Deno, WASM, Rust, OCaml, Haskell, Guile/Scheme

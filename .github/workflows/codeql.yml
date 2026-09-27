@@ -1,5 +1,6 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # For most projects, this workflow file will not need changing; you simply need
 # to commit it to your repository.
 #
@@ -52,11 +53,9 @@ jobs:
         include:
         - language: actions
           build-mode: none
-        # Skein.jl is a pure Julia library (see ADR-0001). CodeQL covers
-        # GitHub Actions workflows here; Julia behaviour is exercised by
-        # ci.yml. No C/C++ or other compiled-language analysis is claimed.
-        # The former Zig ABI/FFI seam was jettisoned as VESTIGIAL per
-        # 0-canon/TEMPLATE-APPLICABILITY-POLICY and ADR-0001.
+        # The native implementation is Zig; the generated C header is an ABI
+        # declaration, not a C/C++ build target. CodeQL covers Actions here.
+        # Julia behaviour is exercised by ci.yml; no Julia/Zig analysis is claimed.
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
@@ -77,12 +76,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      # v4.38.0 SHA b96794f015dfd88f77b49b1c93e0fa7110f94c63 — matches
-      # actions.lock. The v4.38.1 bump (PR #58) arrived in SHA form, which
-      # bypassed the versions-scoped dependabot ignore (nexia-list#101), and
-      # pinned a nonexistent commit => startup_failure on every run. Held at
-      # v4.38.0 until upstream clears 4.38.1 or a new release verifies green.
-      uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+      uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0 (4.38.1 blocked estate-wide; nexia-list#100)
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
@@ -111,6 +105,6 @@ jobs:
         exit 1
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+      uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0 (4.38.1 blocked estate-wide; nexia-list#100)
       with:
         category: "/language:${{matrix.language}}"
