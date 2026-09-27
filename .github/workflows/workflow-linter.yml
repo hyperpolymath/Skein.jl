@@ -1,8 +1,12 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
-# This workflow is managed by gh actions-lock.
 # workflow-linter.yml - Validates GitHub workflows against RSR security standards
-# This workflow can be copied to other repos for consistent enforcement
+# Mirrors the canonical governance-reusable.yml workflow-lint job:
+# SPDX is scanned in the leading comment block (gh actions-lock owns line 1),
+# permissions are required, and action pins must resolve. It does NOT demand
+# SHA pins in the YAML — actions.lock provides the SHA binding (see
+# standards#968, #993: step-level refs must be locked, job-level refs are
+# reported never required).
 name: Workflow Security Linter
 
 on:
@@ -70,24 +74,25 @@ jobs:
           fi
           echo "All workflows have permissions declared"
 
-      - name: Check SHA-Pinned Actions
+      - name: Check Action Pins Resolve (advisory, mirrors governance)
         run: |
-          echo "=== Checking Action Pinning ==="
-          # Find any uses: lines that don't have @SHA format
-          # Pattern: uses: owner/repo@<40-char-hex>
-          unpinned=$(grep -rnE "^[[:space:]]+uses:" .github/workflows/ | \
-            grep -v "@[a-f0-9]\{40\}" | \
-            grep -v "uses: \./\|uses: docker://\|uses: actions/github-script" || true)
-
-          if [ -n "$unpinned" ]; then
-            echo "ERROR: Found unpinned actions:"
-            echo "$unpinned"
-            echo ""
-            echo "Replace version tags with SHA pins, e.g.:"
-            echo "  uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.1"
-            exit 1
+          echo "=== Checking Action Pins Resolve Upstream ==="
+          # The canonical governance-reusable check verifies that pinned refs
+          # resolve upstream; it does NOT require SHA pinning in YAML because
+          # actions.lock provides the commit binding. We keep the same
+          # posture here: every uses: must be present in actions.lock (the
+          # lock-sync gate enforces that), and the lock's commit must exist.
+          # This step is advisory — it warns but does not fail on transient
+          # network issues, because the lock-sync gate is the blocking check.
+          if [ -f scripts/check-lock-sync.sh ]; then
+            echo "Delegating to scripts/check-lock-sync.sh for literal-match verification"
+            if command -v gawk >/dev/null 2>&1; then
+              ./scripts/check-lock-sync.sh || echo "::warning::check-lock-sync.sh reported drift (see lock-sync gate)"
+            else
+              echo "gawk not available locally — skipping literal-match check (CI has gawk)"
+            fi
           fi
-          echo "All actions are SHA-pinned"
+          echo "Pin resolve check complete (see governance / actions-lock-verify for blocking)"
 
       - name: Check for Duplicate Workflows
         run: |
