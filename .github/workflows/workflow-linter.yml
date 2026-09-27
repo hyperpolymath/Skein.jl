@@ -1,0 +1,88 @@
+# This workflow is managed by gh actions-lock.
+# SPDX-License-Identifier: MPL-2.0
+# workflow-linter.yml - Validates GitHub workflows against RSR security standards
+# Mirrors the canonical governance-reusable.yml workflow-lint job.
+name: Workflow Security Linter
+
+on:
+  push:
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Check SPDX Headers
+        run: |
+          echo "=== Checking SPDX License Headers ==="
+          failed=0
+          for file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -f "$file" ] || continue
+            # Scan the header comment block, NOT line 1. `gh actions-lock`
+            # inserts "# This workflow is managed by gh actions-lock." at line
+            # 1 whenever it mints a lockfile, so a line-1 test fights the
+            # estate's own tool and re-fails on every lockfile refresh
+            # (measured 2026-08-07; see standards governance-reusable.yml for
+            # the canonical check this step mirrors).
+            # Avoid literal "---" in source to keep GitHub's YAML parser happy
+            # — use -- as prefix and match third dash via character class.
+            if ! awk 'BEGIN{c=0} /^#/ {print; next} {exit}' "$file" | grep -q "SPDX-License-Identifier"; then
+              # Fallback: also check first 20 lines for SPDX in comment block
+              if ! head -n 20 "$file" | grep "^#.*SPDX-License-Identifier" | grep -q .; then
+                echo "ERROR: $file missing SPDX header in its leading comment block"
+                failed=1
+              fi
+            fi
+          done
+          if [ $failed -eq 1 ]; then
+            echo "Add '# SPDX-License-Identifier: MPL-2.0' within the leading comment block"
+            exit 1
+          fi
+          echo "All workflows have SPDX headers"
+
+      - name: Check Permissions Declaration
+        run: |
+          echo "=== Checking Permissions ==="
+          failed=0
+          for file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -f "$file" ] || continue
+            if ! grep -q "^permissions:" "$file"; then
+              echo "ERROR: $file missing top-level 'permissions:' declaration"
+              failed=1
+            fi
+          done
+          if [ $failed -eq 1 ]; then
+            echo "Add 'permissions: contents: read' at workflow level"
+            exit 1
+          fi
+          echo "All workflows have permissions declared"
+
+      - name: Check for Duplicate Workflows
+        run: |
+          echo "=== Checking for Duplicates ==="
+          if [ -f .github/workflows/codeql.yml ] && [ -f .github/workflows/codeql-analysis.yml ]; then
+            echo "ERROR: Duplicate CodeQL workflows found"
+            exit 1
+          fi
+          echo "No critical duplicates found"
+
+      - name: Summary
+        run: |
+          echo ""
+          echo "=== Workflow Linter Summary ==="
+          echo "All critical checks passed."
