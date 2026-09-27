@@ -61,9 +61,6 @@ for cand in gawk awk; do
   fi
 done
 if [ -z "$AWK" ]; then
-  if command -v python3 >/dev/null 2>&1 && [ -f "$(dirname "$0")/verify_lock.py" ]; then
-    exec python3 "$(dirname "$0")/verify_lock.py" "$WF_DIR"
-  fi
   echo "check-lock-sync: FATAL: no awk supporting 3-argument match() (need gawk)" >&2
   echo "check-lock-sync: install it with: sudo apt-get install -y gawk" >&2
   exit 1
