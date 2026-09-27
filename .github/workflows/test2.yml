@@ -1,7 +1,7 @@
-name: No Uses
-on: push
+name: CI
+on: [push]
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo hello
+      - run: echo "hello"
