@@ -6,6 +6,17 @@
 
 _the No-Bullshit file: what we affirm was true and checkable at this moment_
 
+[IMPORTANT]
+====
+*Snapshot, not current state.* This affirmation is left unedited as a dated
+record of 2026-06-19. Everything it says about the tree was true at that
+stamp — including the thirteen accelerator extensions it flags as "present as
+code, not exercised", which were removed as vestigial on 2026-09-26
+(docs/decisions/ADR-0001), and the sibling path-dep test procedure, which the
+0.4.0 standalone-dependency change replaced. For the current state read
+`.machine_readable/6a2/STATE.a2ml` and the changelog.
+====
+
 [NOTE]
 ====
 *Genre.* An *affirmation* is a solemn declaration of the truth of a statement,

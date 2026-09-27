@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= ADR-0001: Skein.jl serves one master — the general Julia knot-database user
+:toc:
+
+*Status:* Accepted (2026-09-26)
+*Deciders:* Repository owner (via Arena.ai agent session)
+*Supersedes:* the "computational/backend engine of the KRL stack"
+self-description in `STATE.a2ml`, `META.a2ml`, `0-AI-MANIFEST.a2ml` and
+`docs/identity-fabric/musts-intends-wishes.adoc`.
+
+== Context
+
+Between 2026-03 and 2026-09 this repository accumulated material from three
+different "masters", largely through AI-assisted work that mixed Skein.jl up
+with its neighbours:
+
+. *The knot database for Julia users* — the README's face: Gauss-code storage,
+   invariant computation, querying, equivalence checking, CSV/JSON I/O, and the
+   optional KnotTheory.jl extension. This is the code everything actually
+   depends on (`test/`, `benchmark/`, QuandleDB's consumed surface).
+. *The RSR/estate machinery* — the maximal `rsr-template-repo` shape: an
+   Idris2+Zig ABI/FFI seam (`src/abi/`, `ffi/zig/`, `generated/abi/skein.h`,
+   `ABI-FFI-README.adoc`) that nothing in the repo built, tested, or consumed.
+. *Neighbouring projects' concerns* — twelve "accelerator" package extensions
+   (CUDA/Metal/ROCm/TPU/QPU/NPU/VPU/PPU/FPGA/DSP/Crypto/Math) plus an
+   `AcceleratorGate.jl` hard dependency, copied in from the Axiom.jl /
+   AcceleratorGate.jl world, and KRL-stack framing in the estate manifests that
+   described Skein as "the computational/backend engine of the KRL stack".
+
+The AI mixing was not hypothetical: it produced *impossible code*. Nine of the
+twelve accelerator extensions were never declared in `[extensions]` and could
+never load; those that could depend on a hard dependency (`AcceleratorGate`)
+that no consumer of a knot database wants in their graph. The committed
+`Manifest.toml` (resolved on Julia 1.12) was unsatisfiable on the package's own
+1.10/1.11 CI matrix, so CI deleted it on every run. `Project.toml` listed
+KnotTheory.jl as a *hard* dependency in direct violation of this repo's own
+`0-AI-MANIFEST.a2ml` rule ("add KnotTheory.jl as a hard dependency" is
+agent-forbidden; `META.a2ml` `adr-weakdep` says "never a hard dependency").
+The repo's own `AFFIRMATION.adoc` (2026-06-19) recorded the accelerator
+extensions as "present as code, not exercised".
+
+Meanwhile the estate grew its own cure for exactly this disease:
+`hyperpolymath/standards`, `0-canon/TEMPLATE-APPLICABILITY-POLICY.adoc`,
+which replaces "every repo looks like the full template" with a
+capability-gated model and introduces the **VESTIGIAL** verdict:
+_"scaffolding present without the capability that justifies it … Empty
+scaffolding is not neutral — it is vestigial cruft that misleads readers,
+invites drift, and dilutes the signal of the parts that are real."_
+
+== Decision
+
+**Skein.jl serves one master: Julia users who want knot storage, indexing,
+querying and equivalence checking.** Its profile (new:
+`.machine_readable/rsr-profile.a2ml`) is the `julia-library` shape:
+capabilities `julia`, `library`, `docs-site`.
+
+Specifically:
+
+1. *No division into two repositories.* Nothing in the tree is a Tangle,
+   QuandleDB or KRL component: their compilers, specs and servers live in
+   their own repos (`tangle`, `quandledb`, `krl`), and every shared-boundary
+   document (`INTEGRATION.adoc`, the README boundaries note, QuandleDB's own
+   README) already words the relationship as *independent libraries plus a
+   consumer*. Splitting Skein.jl along the KRL seam would manufacture a
+   "KRL-engine" repo with no users and no code. The problem was never that two
+   products shared one repo; it was that foreign *scaffolding* shared one repo
+   with a product.
+2. *Jettison the vestigial scaffolding outright* (not archived, not
+   feature-flagged): `src/abi/`, `ffi/`, `generated/`, `ABI-FFI-README.adoc`,
+   `src/backends/`, the twelve accelerator extensions, the `AcceleratorGate`
+   dependency, the committed `Manifest.toml`, and `tests/fuzz/placeholder.txt`
+   (the FAKE-FUZZ placeholder TEST-NEEDS flagged). Git history retains all of
+   it; any future repo that genuinely wants an ABI/FFI seam or a coprocessor
+   story should declare the capability and re-grow it from the template,
+   with CI that exercises it.
+3. *KnotTheory.jl stays, as a weakdep + package extension* — the repo's own
+   standing decision (`adr-weakdep`), accidentally inverted. Standalone
+   `Pkg.add` of Skein.jl works again.
+4. *The KRL/QuandleDB/Tangle relationship is documented as consumption, not
+   constitution.* `INTENT.contractile` now names QuandleDB as CONSUMER1;
+   `INTEGRATION.adoc` remains the boundary contract. Skein carries no
+   KRL-specific schema, types, or vocabulary, and gains none without a new
+   ADR.
+
+== Consequences
+
+* *Positive:* the package is installable and testable standalone; CI no longer
+  fights a committed manifest; every file in `src/` and `ext/` is exercised by
+  `test/`; the repo's declared shape matches its real shape; downstream
+  consumers (QuandleDB's consumed surface) are untouched.
+* *Negative:* the removed trees are gone for anyone who wanted Skein to be a
+  polyglot FFI showcase or an accelerator demo. Nobody was: nothing in-tree or
+  downstream ever called them, and most of them could not load.
+* *Neutral:* the estate governance layer (a2ml manifests, contractiles,
+  workflows, quickstarts, affirmation/topology docs) stays — it is the
+  *baseline* every estate repo carries, and it was never the problem.
+
+== Verification
+
+* `Project.toml`: `[deps]` = DBInterface, Dates, SHA, SQLite, UUIDs only;
+  KnotTheory only in `[weakdeps]`/`[extensions]`/`[targets.test]`.
+* No tracked file references `AcceleratorGate`, `src/abi`, `ffi/zig`,
+  `generated/abi`, or `Skein{CUDA,Crypto,DSP,FPGA,Math,Metal,NPU,PPU,QPU,ROCm,TPU,VPU}Ext`.
+* CI green on the PR carrying this ADR, including `Pkg.test()` on Julia 1.10
+  and 1.11 without sibling checkouts other than the devved weakdep.

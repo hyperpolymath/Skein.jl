@@ -30,35 +30,34 @@
 * [x] Julia General registry compatibility (compat bounds for all deps)
 * [x] 493 tests passing
 
-== Current focus — Skein in the KRL stack (computational/backend engine)
+== Current focus — a standalone knot-database library (ADR-0001)
 
-Skein.jl is the *computational / backend engine* of the KRL stack — it
-computes, transforms, normalizes, and evaluates invariants and equivalence
-checks, with an embedded SQLite store. KRL = Knot Resolution Language
-(Construct / Transform / Resolve / Retrieve), a resolution DSL — *not merely* a
-query language. *QuandleDB* is the database application that wraps Skein and is
-the canonical persistence + invariant/equivalence face. The four KRL operations
-run against the QuandleDB+Skein substrate; no single op maps 1:1 to a component
-(Skein is *not* "the Retrieve leg"). Generic query access over the store
-(find where `jones = p`, where `crossing < 8`) is an engine-layer affordance.
-See `.machine_readable/6a2/ECOSYSTEM.a2ml` and krl
-`docs/decisions/0002-query-language-deferred.adoc`.
+Skein.jl serves one master: general Julia users who want knot storage,
+indexing, querying and equivalence checking (docs/decisions/
+ADR-0001-skein-serves-one-master.adoc). *QuandleDB* — which hosts the KRL
+resolution-language implementation — is the flagship in-estate *consumer*: it
+wraps Skein for persistence and invariant/equivalence queries. KRL
+construct/transform/resolve semantics live in QuandleDB/krl, not here; Skein's
+own query surface (range/set/meta predicates, pagination, statistics) is a
+plain database affordance, not a KRL operation.
 
+* [x] Standalone `Pkg.add` / `Pkg.test()` (KnotTheory.jl weakdep-only again; AcceleratorGate dependency and accelerator extensions removed, 0.4.0)
+* [x] Vestigial ABI/FFI/accelerator scaffolding jettisoned (ADR-0001)
 * [ ] Alexander polynomial (standalone, via the PD / `pd_code` route)
-* [ ] Consolidate the Retrieve surface (range/set/meta predicates, pagination, statistics) against the KRL Retrieve spec
-* [ ] Green `Pkg.test()` baseline in CI (the `AcceleratorGate` path-dep must be resolvable in the test env)
+* [ ] Query surface consolidation against Skein's own contract (INTEGRATION.adoc), with QuandleDB's needs as the first consumer input
 
 [NOTE]
 ====
-*Withdrawn (2026-06):* an earlier draft made the "current focus" a realignment
-of Skein into a knot *graph* database — a typed knot-relationship (edge) layer +
-traversal (`knot_relations` table, connected-sum factorisation DAG, skein
-triples L+/L-/L0, mutation/crossing-change; schema v5). That was authored on a
-mistaken "KRL = query language" model and is withdrawn. Skein-relation
-resolution belongs to the KRL surface / Tangle core / QuandleDB Resolve layer,
-not necessarily Skein's persistence layer. The "maths analogue of a graph
-database" remains the user's aspirational framing; any edge/traversal or schema
-change must first be re-grounded against the KRL 4-layer architecture.
+*Withdrawn (2026-06, restated 2026-09):* an earlier draft made the "current
+focus" a realignment of Skein into a knot *graph* database — a typed
+knot-relationship (edge) layer + traversal (`knot_relations` table,
+connected-sum factorisation DAG, skein triples L+/L-/L0,
+mutation/crossing-change; schema v5). That was authored on a mistaken
+"KRL = query language" model and is withdrawn. Skein-relation resolution
+belongs to QuandleDB's Resolve layer, not necessarily Skein's persistence
+layer. The "maths analogue of a graph database" remains the owner's
+aspirational framing; any edge/traversal or schema change must first be
+re-grounded against Skein's own storage requirements.
 ====
 
 == v0.3.0 (Planned)
@@ -79,9 +78,6 @@ change must first be re-grounded against the KRL 4-layer architecture.
 * [ ] Link support (multi-component knots)
 * [ ] Knot atlas web integration (fetch from KnotInfo online)
 * [ ] Spatial graph database extension
-* [ ] PackageCompiler.jl shared library for C FFI
-* [ ] Idris2 ABI formal interface proofs
-* [ ] Zig FFI C-compatible bindings
 * [ ] Performance: connection pooling, prepared statement caching
 * [ ] Knot diagram visualisation (via Makie.jl extension)
 
@@ -102,10 +98,6 @@ change must first be re-grounded against the KRL 4-layer architecture.
 * [ ] **GNN Embedding Index**: Native database support for storing and querying knots by their Graph Neural Network (GNN) embedding vectors, enabling "Fuzzy Topology" searches.
 * [ ] **Automated Invariant Discovery**: Use the database as a training set for finding new, computationally efficient topological invariants.
 
-=== Axiomatic Data Integrity
-* [ ] **Proof-Carrying Records**: Store an Axiom.jl-verified "Proof Certificate" alongside every invariant value to guarantee its mathematical correctness.
-* [ ] **Verified Migration Engine**: Formally prove that schema migrations preserve the topological integrity of Gauss codes.
-
-=== Blockchain & Web3 Integration
-* [ ] **Topological Identity Oracles**: Export knot records and their proofs to smart-contract compatible formats for use in blockchain-based identity systems.
-* [ ] **Skein-on-Chain**: A lightweight verification layer for checking knot invariants directly on EVM or Move-based blockchains.
+=== Honest Guarantees
+* [ ] **Property-test hardening**: extend the property suite to cover every invariant in PROOF-NEEDS.adoc.
+* [ ] **Verified Migration Engine**: prove (or exhaustively property-test) that schema migrations preserve stored Gauss codes and invariant caches.

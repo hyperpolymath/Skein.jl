@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MPL-2.0
+# rsr-profile.a2ml — capability declaration per 0-canon/TEMPLATE-APPLICABILITY-POLICY
+# (hyperpolymath/standards). Declares which RSR template modules this repo is
+# entitled to carry; anything present without a declared capability is VESTIGIAL
+# and was removed in ADR-0001 (docs/decisions/).
+
+[profile]
+capabilities = ["julia", "library", "docs-site", "governance-tier"]
+
+[rationale]
+julia = "the package is Julia source (Project.toml, src/, ext/, test/)"
+library = "consumed as a library: Pkg.add / Pkg.add(url=...); QuandleDB is the primary in-estate consumer"
+docs-site = "www/.well-known + casket-pages.yml publish a small Pages site"
+governance-tier = "load-bearing: QuandleDB and the KRL tooling consume this library, so it carries the AFFIRMATION/GOVERNANCE/MAINTAINERS trio"
+
+no-abi = "pure-Julia library over SQLite.jl; no C-ABI seam, no Idris2 ABI proofs (removed 2026-09, ADR-0001)"
+no-ffi = "no Zig FFI layer (removed 2026-09, ADR-0001)"
+no-formal-proofs = "PROOF-NEEDS/PROOF-PROGRESS record property-test evidence and candidate obligations; no mechanised proofs in-tree"
+no-container = "Containerfile exists only as the CI verification image (pinned Julia + Pkg.test); no image is shipped"
+no-published-package = "not yet in the General registry; install is Pkg.add(url=...); see ROADMAP.adoc"
+no-accelerators = "no coprocessor backends: the former CUDA/Metal/ROCm/TPU/QPU/NPU/VPU/PPU/FPGA/DSP/Crypto/Math extensions were undeclared, unloadable and uncalled (removed 2026-09, ADR-0001)"

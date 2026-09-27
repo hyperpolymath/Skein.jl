@@ -42,23 +42,20 @@ extension module.
 | Standalone invariant computation directly from `GaussCode` without
   `KnotTheory.jl`: `crossing_number` (diagram count), `writhe` (algebraic
   sum of signs), `gauss_hash` (SHA-256 of the canonical Gauss sequence
-  for deduplication). All dispatch through `backend_invariant_compute`.
+  for deduplication), plus the equivalence machinery (`canonical_gauss`,
+  `is_equivalent`, `is_isotopic`, `mirror`, `simplify_r1`, `simplify_r2`).
 
 | `polynomials.jl`
 | Standalone Kauffman bracket and Jones polynomial from Gauss codes.
   Laurent polynomials are represented as `Dict{Int,Int}` (exponent → coefficient).
-  Dispatches through `backend_polynomial_eval`; the Julia fallback is
-  complete and correct for small diagrams.
+  The Julia implementation is complete and correct for small diagrams.
 
 | `import_export.jl`
 | Bulk I/O: `import_csv!` (KnotInfo-style CSV), `export_csv`, `export_json`,
   `dt_to_gauss` (DT-code to Gauss conversion for bulk imports), `bulk_import!`.
 
-| `backends/`
-| Coprocessor-dispatch glue. See `backends/README.adoc`.
-
-| `abi/`
-| Formal ABI specifications (Idris2) and FFI stubs. See `abi/README.adoc`.
+| `knot_table.jl`
+| Hardcoded prime-knot table through 7 crossings (`prime_knot`, `prime_knots`).
 |===
 
 == Invariant-column index
@@ -71,17 +68,18 @@ The SQLite `knots` table carries these indexed columns:
 
 | `crossing_number` | INTEGER | Diagram count (not minimal); indexed for range queries
 | `writhe` | INTEGER | Algebraic crossing sum; distinguishes chirality
-| `diagram_format` | TEXT | `"gauss"`, `"pd"`, or `"dt"` — format of stored code
-| `schema_version` | INTEGER | Updated by migration on open
+| `diagram_format` | TEXT | `"gauss"` or `"pd"` — format of stored code
+| `jones_polynomial` | TEXT | indexed exponent:coefficient serialisation
+| `alexander_polynomial`, `determinant`, `signature` | TEXT/INTEGER | PD-cached invariants (KnotTheory route)
 |===
 
 == Extension API (with KnotTheory.jl)
 
 When `KnotTheory.jl` is also loaded, Skein extends the following:
 
-- `store!(db, name, pd::PlanarDiagram)` — stores PD codes natively
-- `fetch_knot` returns a `PlanarDiagram` instead of a `GaussCode`
-- `to_knot` / `to_planardiagram` for round-tripping between packages
+- `store!(db, name, knot::Knot)` and `store!(db, name, pd::PlanarDiagram)` — PD-native storage with cached Alexander/Jones/determinant/signature
+- `to_knot(record)` / `to_planardiagram(record)` for round-tripping between packages
 
-This is wired through a Julia package extension (`ext/SkeinKnotTheoryExt.jl`
-in the parent repo). Do not implement KnotTheory-specific logic inside `src/`.
+This is wired through a Julia package extension (`ext/KnotTheoryExt.jl`;
+trigger declared in Project.toml `[extensions]`). Do not implement
+KnotTheory-specific logic inside `src/`.

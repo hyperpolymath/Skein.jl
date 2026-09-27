@@ -1,28 +1,30 @@
 # SPDX-License-Identifier: MPL-2.0
 # ECOSYSTEM.a2ml — Ecosystem position
 # Refreshed 2026-06-05 (corrected: KRL is a resolution language, NOT a query language)
-# Refreshed 2026-06-18 (reconcile: Skein = compute/backend engine; QuandleDB = persistence + invariant/equivalence DB; the four KRL ops are operations, not component labels)
+# Refreshed 2026-06-18 (reconcile: the four KRL ops are operations, not component labels)
+# Re-grounded 2026-09-26 (ADR-0001: Skein = standalone knot-database library; QuandleDB/KRL/Tangle = consumers; the former 'compute/backend engine of the KRL stack' role is withdrawn)
 
 [metadata]
 project = "Skein.jl"
 ecosystem = "hyperpolymath"
 
 [position]
-type = "engine"
-role = "Computational / backend engine of the KRL stack — the library that computes, transforms, normalizes, and evaluates knot/tangle invariants and equivalence checks, with an embedded SQLite store for what it computes. QuandleDB is the database application that wraps Skein and is the canonical persistence + invariant/equivalence face."
+type = "library"
+role = "Standalone knot-database library for Julia (ADR-0001): stores Gauss codes / canonical planar diagrams, computes and indexes invariants on insert, answers invariant and equivalence queries over an embedded SQLite store. QuandleDB — which hosts the KRL implementation — is the flagship in-estate CONSUMER; consumption defines neither Skein's purpose nor its architecture (INTEGRATION.adoc)."
 
 # KRL = Knot Resolution Language: a COMPOSITIONAL language for Construct,
 # Transform, Resolve, Retrieve over tangles/knots/links. It is NOT a query
 # language — "resolution" (as in the skein relation) is the central act;
 # Retrieve/"query" is only one of the four operations.
+# Historical context, recorded so the correction is traceable: the 2026-06
+# '4-layer KRL stack' table (surface → TangleIR → core → substrate) described a
+# consumer-side architecture and is retained in krl/quandledb docs, not here.
+# Skein carries no KRL-specific types, schema or vocabulary.
 [krl-stack]
-layer-1-surface = "KRL surface syntax + grammar (krl repo); canonical impl KRLAdapter.jl; server-side parser quandledb/server/krl/"
-layer-2-interchange = "TangleIR — canonical interchange object (defined in KRLAdapter.jl, consumed by hyperpolymath/tangle)"
-layer-3-core = "Tangle core — proven type-safe small-step semantics (hyperpolymath/tangle, Lean: proofs/Tangle.lean)"
-layer-4-substrate = "Skein.jl (this repo) = computational/backend engine; QuandleDB = persistence + invariant/equivalence database (the application that wraps Skein). The four KRL operations run against this substrate; no single op maps 1:1 to a component."
+consumer-note = "KRL surface + grammar live in krl/quandledb (server-side parser quandledb/server/krl/); TangleIR interchange is defined consumer-side and consumed by hyperpolymath/tangle. Skein.jl is the persistence/invariant store those tools consume as a plain Julia library."
 
 [skein-role]
-engine = "the computational/backend library — computes/transforms/normalizes/evaluates knot invariants (Jones, genus, Seifert circles) and equivalence checks, with an embedded SQLite store. Generic query access over that store (find where jones = p, where crossing < 8) is a legitimate ENGINE-LAYER affordance, not KRL's identity. The four KRL ops are operations, not component labels — Skein is NOT 'the Retrieve leg'."
+library = "computes and caches knot invariants (Jones, genus, Seifert circles) and equivalence checks, over an embedded SQLite store. Generic query access (find where jones = p, where crossing < 8) is a plain database affordance — not a KRL operation and not 'the Retrieve leg' of anything."
 retrieve-clause = "KRL's Retrieve recovers resolution-relevant artefacts (presentations, invariants, witnesses, equivalence classes, prior resolutions, explanations, provenance) — NOT arbitrary database querying. See krl docs/decisions/0002-query-language-deferred.adoc."
 knottheory = "weakdep — invariant engine; loaded via ext/KnotTheoryExt.jl. (KRL's README calls the invariant engine JuliaKnot.jl — naming to reconcile.)"
 quandledb = "the database application that wraps Skein — the canonical persistence + invariant/equivalence face (where presentations, invariants, fingerprints, equivalence classes, witnesses, results live), plus the equivalence/Resolve surface (equivalent?, classify, near). NOT 'an app that queries Skein'."
