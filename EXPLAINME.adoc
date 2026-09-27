@@ -18,7 +18,7 @@ ____
 - **Record type**: `KnotRecord` struct stores: name, Gauss code, crossing_number, writhe, gauss_hash (SHA-256 content-addressing), jones_polynomial, genus, seifert_circle_count
 - **Database abstraction**: `SkeinDB` exported at line 44; created via `SkeinDB("knots.db")` (README line 32)
 - **Storage operation**: `store!(db, name, gauss_code, metadata=...)` (exported line 47) performs: (1) validates Gauss code, (2) computes invariants in `src/invariants.jl`, (3) inserts into SQLite with schema v3 (auto-migrates if needed), (4) logs to WAL for concurrent reads
-- **Critical path**: `src/storage.jl` (11KB) implements SQLite lifecycle with `_get_schema_version` + `_migrate_vN_to_vM` pattern (handles v1→v2→v3 migrations transparently)
+- **Critical path**: `src/storage.jl` (11KB) implements SQLite lifecycle with `_get_schema_version` + `_migrate_vN_to_vM` pattern (handles v1→v4 migrations transparently)
 - **Invariant computation**: `crossing_number`, `writhe`, `gauss_hash` computed standalone in `src/invariants.jl` (9KB); Jones polynomial computed via KnotTheory.jl extension when loaded
 
 **Caveat:** Jones polynomial computation requires KnotTheory.jl (weakdep, optional). Without it, only standalone invariants (crossing, writhe, hash) are computed. Alexander polynomial NOT implemented—would require crossing chirality data not stored in basic Gauss codes.
@@ -68,11 +68,11 @@ Same database abstraction pattern (schema versioning, cursor iteration) used in 
 |===
 | Path | What's There
 
-| `src/Skein.jl` | Module entry point (34 lines); exports 28 functions across types, operations, lifecycle, invariant computation, equivalence checking, querying, import/export, polynomial operations
+| `src/Skein.jl` | Module entry point (34 lines); exports 54 names across types, operations, lifecycle, invariant computation, equivalence checking, querying, import/export, polynomial operations
 | `src/types.jl` | Core data structures: `GaussCode(crossings::Vector{Int})`, `KnotRecord` (11 fields: name, code, crossing_number, writhe, gauss_hash, jones_polynomial, genus, seifert_circles, metadata, created_at, updated_at)
 | `src/polynomials.jl` | 8KB Laurent polynomial arithmetic; Kauffman bracket computation; Jones polynomial from bracket; Seifert circle enumeration; genus calculation via Seifert surface
 | `src/invariants.jl` | 9KB standalone invariant computation: `crossing_number(g)` counts distinct crossing indices; `writhe(g)` sums signed crossings; `gauss_hash(g)` SHA-256 of serialized code; equivalence predicates: `is_equivalent`, `is_isotopic`, `is_amphichiral`, `mirror`, `simplify_r1`, `simplify_r2`, `canonical_gauss`
-| `src/storage.jl` | 11KB SQLite backend: `SkeinDB` type with v3 schema; `store!` (auto-computes invariants); `fetch_knot`, `list_knots`, `query` (keyword interface); `update_metadata!` (in-place updates); schema migration via `_get_schema_version` and `_migrate_vN_to_vM` functions; WAL mode for concurrent reads
+| `src/storage.jl` | 11KB SQLite backend: `SkeinDB` type with v4 schema (PD-native fields); `store!` (auto-computes invariants); `fetch_knot`, `list_knots`, `query` (keyword interface); `update_metadata!` (in-place updates); schema migration via `_get_schema_version` and `_migrate_vN_to_vM` functions; WAL mode for concurrent reads
 | `src/query.jl` | 9KB composable query predicates: `crossing(n)`, `writhe_eq(w)`, `genus_eq(g)`, `meta_eq(key, val)`, `name_like(pattern)` with `&` (AND) and `|` (OR) combinators; `query(db, pred)` returns iterator
 | `src/import_export.jl` | 11KB I/O operations: `import_csv!` (bulk load from CSV); `export_csv`, `export_json` (serialization); `dt_to_gauss` (DT notation conversion); `import_knotinfo!` (KnotInfo table: 36 prime knots through 7 crossings); `bulk_import!` (tuple list ingestion)
 | `ext/KnotTheoryExt.jl` | Package extension (weakdep): adds methods for `store!(db, name, knot::Knot)` and `store!(db, name, pd::PlanarDiagram)`; auto-computes Jones polynomial when KnotTheory loaded

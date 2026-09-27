@@ -90,3 +90,11 @@ Skein guarantees indexed querying over at least:
 
 Semantic layers should compose on top of this contract rather than re-implement
 raw diagram persistence logic.
+
+== What Skein does NOT expose
+
+Skein is a pure-Julia library: it exposes no C ABI, FFI, socket or HTTP
+surface (the former Idris2/Zig seam was vestigial and was removed — see
+`docs/decisions/ADR-0001` and `.machine_readable/rsr-profile.a2ml`).
+Consumers embed it from Julia; anything service-shaped (e.g. QuandleDB's
+HTTP layer) lives in the consumer's repo and owns its own API surface.

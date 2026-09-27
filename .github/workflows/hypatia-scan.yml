@@ -19,6 +19,12 @@ permissions:
 
 jobs:
   hypatia:
-    uses: hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@fcb566cfb8a86cea2d3666bf65a4f177a49b1313
+    # Pinned at standards 2479cf769ed5f0481ccf64860a2ab954514c2b59 (2026-09-24).
+    # The previous pin (fcb566cf, 2026-09-07) predates the #771/#892 fix in the
+    # reusable's severity whitelist: the scanner emits "warn"-ranked findings,
+    # which the old gate rejected wholesale — every scan failed with
+    # "Hypatia did not produce one valid findings array" regardless of content.
+    # Revisit the pin deliberately (standards#1014), not nightly.
+    uses: hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@2479cf769ed5f0481ccf64860a2ab954514c2b59
     with:
       block-on-high: true

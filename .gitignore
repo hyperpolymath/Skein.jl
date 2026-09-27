@@ -2,7 +2,11 @@
 # RSR-compliant .gitignore
 
 # Julia
-# Manifest.toml is committed for reproducibility (research artifact)
+# Manifest.toml is NOT committed: this is a package, and packages pin [compat],
+# not resolved graphs. A committed manifest pinned 1.12 stdlibs that were
+# unsatisfiable on the 1.10/1.11 CI matrix (and made Pkg.instantiate() fail for
+# every consumer); each environment resolves its own graph instead.
+Manifest.toml
 *.jl.cov
 *.jl.*.cov
 *.jl.mem

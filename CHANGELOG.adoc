@@ -21,6 +21,8 @@ extension)
 * `+INTEGRATION.adoc+` documenting layer boundaries
 * PROOF-NEEDS.md enumerating schema + storage obligations
 * CRG v2 READINESS.md (grade C)
+* `+.machine_readable/rsr-profile.a2ml+` capability declaration and
+`+docs/decisions/ADR-0001+` (one-master scope decision)
 
 ==== Changed
 
@@ -28,6 +30,36 @@ extension)
 (positional constructor breaking change)
 * `+store!+` refactored via `+_store_precomputed!+` helper; Gauss-path
 preserved
+
+=== [0.4.0] — 2026-09-26
+
+==== Removed
+
+* *Vestigial scaffolding jettisoned (ADR-0001).* The Idris2/Zig ABI/FFI seam
+(`+src/abi/+`, `+ffi/+`, `+generated/+`, `+ABI-FFI-README.adoc+`), the twelve
+accelerator package extensions (CUDA/Metal/ROCm/TPU/QPU/NPU/VPU/PPU/FPGA/
+DSP/Crypto/Math), `+src/backends/+`, and the `+AcceleratorGate.jl+`
+dependency. None was loadable or called: nine extensions were never declared
+in `+[extensions]+`, and nothing in `+src/+`, `+test/+`, `+benchmark/+` or
+any downstream consumer referenced the rest.
+* `+Manifest.toml+` uncommitted — packages pin `+[compat]+`, not resolved
+graphs; the committed manifest (resolved on Julia 1.12) was unsatisfiable on
+the 1.10/1.11 CI matrix.
+* `+tests/fuzz/placeholder.txt+` — the TEST-NEEDS "FAKE-FUZZ" placeholder.
+
+==== Fixed
+
+* `+KnotTheory.jl+` restored to *weakdep-only* (it had leaked into
+`+[deps]+`, contradicting `+adr-weakdep+` and the AI manifest) — Skein
+installs standalone again.
+* CI: CodeQL re-pinned to the real v4.38.0 commit (a dependabot SHA-form bump
+had pinned a nonexistent commit and startup-failed every run); actions.lock
+resynced (haskell-actions/setup v2.12.1, standards pin 2479cf7); the
+workflow linter now scans the leading comment block for SPDX, as the
+canonical governance check does; Hypatia caller pin bumped past the
+severity-whitelist defect (standards#892).
+* `+just doctor+` no longer requires Zig; `+crg-grade+` reads
+`+READINESS.adoc+`; `+mise.toml+` pins the toolchain this repo uses.
 
 === [0.3.1]
 

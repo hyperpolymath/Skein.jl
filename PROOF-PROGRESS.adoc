@@ -289,12 +289,12 @@ Skein.jl is the knowledge base for knot theory research in the Hyperpolymath eco
 | rrecord-verity | Same cursor iteration pattern | ✅ ARCHITECTURAL
 |===
 
-**Role in KRL Stack:**
+**Role in the estate (re-grounded 2026-09-26, ADR-0001):**
 
-Skein.jl is the *computational/backend engine* of the KRL (Knot Resolution Language) stack:
-- Skein: computes, transforms, normalizes, and evaluates invariants and equivalence checks
+Skein.jl is a *standalone knot-database library*; QuandleDB/KRL consume it:
+- Skein: stores, indexes and queries knots; computes and caches invariants and equivalence checks
 - QuandleDB: database application that wraps Skein (canonical persistence + invariant/equivalence face)
-- KRL: resolution DSL (construct/transform/resolve/retrieve operations run against QuandleDB+Skein substrate)
+- KRL: resolution DSL implemented in QuandleDB; defines nothing inside Skein
 
 == Current Status Summary
 

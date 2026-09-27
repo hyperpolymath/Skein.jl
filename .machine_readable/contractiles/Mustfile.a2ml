@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-# Mustfile — Physical state contract for rsr-template-repo
+# Mustfile — Physical state contract for Skein.jl
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #
 # What MUST be true about this repository. Hard requirements.
@@ -7,12 +7,19 @@
 # Fix with: must fix (where a deterministic fix exists)
 
 @abstract:
-Physical-state invariants for rsr-template-repo. This is the canonical
-RSR template repository. These are hard requirements — CI and pre-commit
-hooks fail if any check fails.
+Physical-state invariants for Skein.jl: a standalone Julia knot-database
+library. These are hard requirements — CI and pre-commit hooks fail if any
+check fails.
 @end
 
-## File Presence
+@requires:
+- section: Core-Files
+- section: Package-Integrity
+- section: Directory-Structure
+- section: Git-State
+@end
+
+## Core-Files
 
 ### license-present
 - description: LICENSE file must exist
@@ -25,8 +32,8 @@ hooks fail if any check fails.
 - severity: critical
 
 ### security-policy
-- description: SECURITY.md must exist
-- run: test -f SECURITY.md
+- description: SECURITY.adoc must exist (this repo's .adoc-canonical security policy)
+- run: test -f SECURITY.adoc
 - severity: critical
 
 ### ai-manifest
@@ -44,7 +51,34 @@ hooks fail if any check fails.
 - run: test -d .machine_readable
 - severity: critical
 
-## Directory Structure
+## Package-Integrity
+
+### julia-project
+- description: Project.toml must exist and name the Skein package
+- run: grep -q '^name = "Skein"' Project.toml
+- severity: critical
+
+### knottheory-weakdep-only
+- description: KnotTheory.jl must never be a hard dependency (adr-weakdep; 0-AI-MANIFEST agent-may-not)
+- run: test -z "$(python3 -c "import tomllib;d=tomllib.load(open('Project.toml','rb'));print([k for k in d.get('deps',{}) if k=='KnotTheory'])")"
+- severity: critical
+
+### no-accelerator-dependency
+- description: AcceleratorGate.jl (or any coprocessor backend package) must not be a dependency (ADR-0001)
+- run: test -z "$(grep -i 'acceleratorgate' Project.toml)"
+- severity: critical
+
+### no-manifest-committed
+- description: Manifest.toml must not be committed (packages pin [compat], not resolved graphs)
+- run: test -z "$(git ls-files Manifest.toml)"
+- severity: critical
+
+### extension-registry-consistency
+- description: every ext/*.jl extension module is declared in Project.toml [extensions]
+- run: bash -c 'for f in ext/*.jl; do grep -q "$(basename "$f" .jl)" Project.toml || exit 1; done'
+- severity: critical
+
+## Directory-Structure
 
 ### contractiles-complete
 - description: All required contractile directories exist
@@ -62,41 +96,23 @@ hooks fail if any check fails.
 - severity: critical
 
 ### six-directory-present
-- description: 6a2 directory exists with required files
+- description: 6a2 checkpoint directory exists with required files
 - run: test -d .machine_readable/6a2 && test -f .machine_readable/6a2/META.a2ml && test -f .machine_readable/6a2/ECOSYSTEM.a2ml && test -f .machine_readable/6a2/STATE.a2ml && test -f .machine_readable/6a2/PLAYBOOK.a2ml && test -f .machine_readable/6a2/AGENTIC.a2ml && test -f .machine_readable/6a2/NEUROSYM.a2ml
 - severity: critical
 
-### anchors-directory
-- description: anchors directory exists in 6a2
-- run: test -d .machine_readable/6a2/anchors
+### anchor-directory
+- description: 6a2 anchor entry point exists
+- run: test -f .machine_readable/6a2/anchor/ANCHOR.a2ml
 - severity: warning
 
-### self-validating-structure
-- description: self-validating directory has k9-svc and examples
-- run: test -d .machine_readable/self-validating && test -d .machine_readable/self-validating/k9-svc && test -d .machine_readable/self-validating/examples
-- severity: warning
-
-## Template Integrity
-
-### no-placeholder-values
-- description: No placeholder values remain in template files
-- run: test -z "$(grep -r '{{' .machine_readable/contractiles/ 2>/dev/null)"
+### rsr-profile-present
+- description: capability profile exists (TEMPLATE-APPLICABILITY-POLICY)
+- run: test -f .machine_readable/rsr-profile.a2ml
 - severity: critical
-- notes: All placeholders must be substituted when copying this template
-
-### template-readonly
-- description: Template marker files are not modified
-- run: grep -q 'RSR_TEMPLATE_DO_NOT_EDIT' .machine_readable/0.1-AI-MANIFEST.a2ml
-- severity: warning
 
 ## Git State
 
 ### no-untracked-contractiles
 - description: All contractile files are tracked in git
 - run: test -z "$(git ls-files -o --exclude-standard .machine_readable/contractiles/ 2>/dev/null)"
-- severity: critical
-
-### signed-commits
-- description: All commits must be signed
-- run: git verify-commit HEAD
 - severity: critical
