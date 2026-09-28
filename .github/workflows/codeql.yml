@@ -82,7 +82,7 @@ jobs:
       # bypassed the versions-scoped dependabot ignore (nexia-list#101), and
       # pinned a nonexistent commit => startup_failure on every run. Held at
       # v4.38.0 until upstream clears 4.38.1 or a new release verifies green.
-      uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+      uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
@@ -111,6 +111,6 @@ jobs:
         exit 1
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+      uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
       with:
         category: "/language:${{matrix.language}}"
