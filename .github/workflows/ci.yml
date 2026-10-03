@@ -28,7 +28,7 @@ jobs:
       - uses: julia-actions/setup-julia@v3.0.2
         with:
           version: ${{ matrix.julia-version }}
-      - uses: julia-actions/cache@v3.3.0
+      - uses: julia-actions/cache@v3.4.0
 
       # KnotTheory.jl is a weakdep (see ADR-0001, Project.toml). It is not in a
       # registry, so for CI we check it out as a sibling and dev it as a path
