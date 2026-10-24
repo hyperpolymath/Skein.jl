@@ -33,7 +33,7 @@ workflows:
     '.github/workflows/mirror.yml':
         - 'hyperpolymath/standards@d5fe075a50ab3ce4f41614d66ed77f152fda134f'
     '.github/workflows/push-email-notify.yml':
-        - 'hyperpolymath/smtp-notify-action@v0.3.0'
+        - 'hyperpolymath/smtp-notify-action@v0.5.0'
     '.github/workflows/rsr-antipattern.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/runtime-policy.yml':
@@ -131,9 +131,9 @@ dependencies:
         commit: 'sha1-0f8e8c99d88aeb3fbfd523f1ef2c6f762d10d64d'
         owner_id: 75048950
         repo_id: 623796603
-    'hyperpolymath/smtp-notify-action@v0.3.0':
-        ref: 'v0.3.0'
-        commit: 'sha1-22e7bdb322c430c1d0dac6b3bb307f4bb139d0be'
+    'hyperpolymath/smtp-notify-action@v0.5.0':
+        ref: 'v0.5.0'
+        commit: 'sha1-c1c9fa07992a02c1fd3d67a0dc1b08cccb852aef'
         owner_id: 6759885
         repo_id: 1352485172
     'hyperpolymath/standards@2479cf769ed5f0481ccf64860a2ab954514c2b59':
