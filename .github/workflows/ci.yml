@@ -15,7 +15,7 @@ jobs:
   test:
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -41,4 +41,4 @@ jobs:
 
       - name: Install, build, test
         run: |
-          julia --project=. -e 'using Pkg; Pkg.develop(PackageSpec(path="../KnotTheory.jl")); Pkg.instantiate(); Pkg.build(); Pkg.test()'
+          julia --project=. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(Pkg.RegistrySpec(url="https://github.com/hyperpolymath/julia-professional-registry.git")); Pkg.develop(PackageSpec(path="../KnotTheory.jl")); Pkg.instantiate(); Pkg.build(); Pkg.test()'
