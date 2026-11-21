@@ -24,6 +24,6 @@ jobs:
     # which the old gate rejected wholesale — every scan failed with
     # "Hypatia did not produce one valid findings array" regardless of content.
     # Revisit the pin deliberately (standards#1014), not nightly.
-    uses: hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@2479cf769ed5f0481ccf64860a2ab954514c2b59
+    uses: hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@1ded685afb366dededa9f372f82fb58cd45f3c7b
     with:
       block-on-high: true
